@@ -7,6 +7,10 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <sstream>
+
+
+#define RAISE_ERROR(msg) do { std::ostringstream self; self << msg; throw Error(self.str()); } while(0)
 
 namespace s28 {
 
@@ -27,6 +31,7 @@ namespace {
             }
         }
 
+        esc_chars[':'] = "\\:";
         esc_chars['\n'] = "\\n";
         esc_chars['\t'] = "\\t";
         esc_chars['\\'] = "\\\\";
@@ -62,6 +67,24 @@ namespace {
     }
 }
 
+class Error : public std::exception
+{
+public:
+    Error(const std::string &msg) :
+        msg(msg)
+    {}
+
+    virtual ~Error() throw() {}
+
+    const char* what() const throw() {
+        return msg.c_str();
+    }
+
+private:
+    std::string msg;
+};
+
+
 
 std::string escape(const std::string &s) {
     std::string rv;
@@ -76,7 +99,7 @@ std::string unescape(const std::string &s) {
     std::string rv;
     for (int i = 0; i < s.size(); ++i) {
         if (s[i] == '\\') {
-            if (i == s.size() - 1) throw 1;
+            if (i == s.size() - 1) RAISE_ERROR("unescape failed");
             switch (s[i + 1]) {
                 case 'n':
                     i += 1; rv += "\n";
@@ -88,9 +111,12 @@ std::string unescape(const std::string &s) {
                     i += 1; rv += "\\";
                     break;
                 case 'x':
-                    if (i + 3 >= s.size()) throw 1;
+                    if (i + 3 >= s.size()) RAISE_ERROR("unescape failed");;
                     rv += (char)( (hex2int(s[i + 2]) << 4) + hex2int(s[i + 3]));
                     i+=3;
+                    break;
+                default:
+                    rv += s[i + 1]; i++;
                     break;
             }
 
@@ -178,8 +204,11 @@ int main() {
     //
     s28::init_esc_chars();
 
-    std::string x = "a\t\n\013\\123 :_\n\n\n\\\\\"$\09fasdfgwg\xewg";
+    std::string x = "a\t\n\013\\123 ::: :_\n\n\n\\\\\"$\09fasdfgwg\xewg";
     x[19] = 0xf5;
+
+    std::cout << "[" << s28::escape(x) << "]" << std::endl;
+    std::cout << "[" << s28::escape("Hello world!") << "]" << std::endl;
     std::cout << (s28::unescape(s28::escape(x)) == x) << std::endl;
 }
 
