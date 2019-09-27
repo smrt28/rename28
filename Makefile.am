@@ -10,7 +10,8 @@ bin_PROGRAMS      = rename28
 
 rename28_SOURCES = src/main.cc src/escape.cc src/escape.h src/error.h
 
-rename28_CPPFLAGS = -Wall
+rename28_CPPFLAGS = -Wall @REMOVE28_CFLAGS@
+rename28_LDFLAGS = @REMOVE28_LIBS@
 #rename28_LDADD   = -lcrypt
 
 

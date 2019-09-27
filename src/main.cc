@@ -2,33 +2,41 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
+#include <map>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <memory>
 #include <sstream>
-
+#include <openssl/sha.h>
 #include "escape.h"
 #include "error.h"
 
 namespace s28 {
+class FileDescriptorGuard {
+public:
+    FileDescriptorGuard(int fd) : fd(fd) {}
+    ~FileDescriptorGuard() {
+        if (fd >= 0) ::close(fd);
+    }
+    int fd;
+};
 
+class NodeContext;
 class Node {
 public:
-    class Context {
+    Node(const std::string &path, NodeContext &context) :
+        path(path), context(context)
+    {}
 
-    };
-
-    Node(const std::string &path, Context &context) : path(path), context(context) {
-                std::cout << path << std::endl;
-    }
-
-    virtual void walk() = 0;
+    virtual void build() = 0;
 
 protected:
     const std::string path;
-    Context &context;
+    NodeContext &context;
 };
 
 
@@ -36,22 +44,62 @@ class Dir : public Node {
 public:
     using Node::Node;
 
-    void walk() override;
+    void build() override;
 
 private:
     std::vector<std::unique_ptr<Node>> children;
 };
 
 class File : public Node {
+public:
     using Node::Node;
+    void build() override;
 
-    void walk() override {}
+    bool is_hashed() const { return hashed; }
+    std::string get_hash() {
+        return std::string((char *)hash, SHA256_DIGEST_LENGTH);
+    }
+private:
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    bool hashed = false;
 };
 
-void Dir::walk() {
+class NodeContext {
+public:
+    uint32_t hash_id(unsigned char *hash) { return 0; }
+
+private:
+    std::map<std::string, int> file_ids;
+};
+
+
+
+
+void File::build() {
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    int fd = open(path.c_str(), O_RDONLY);
+    if (fd == -1) RAISE_ERROR("open for reading; file=" << path);
+    FileDescriptorGuard guard(fd);
+
+    char buf[4096];
+    ssize_t len;
+
+    do {
+        len = read(fd, buf, sizeof(buf));
+        if (len < 0)
+            RAISE_ERROR("error while reading; file=" << path);
+
+        SHA256_Update(&sha256, buf, len);
+    } while(len != sizeof(buf));
+    SHA256_Final(hash, &sha256);
+    hashed = true;
+}
+
+
+void Dir::build() {
     DIR *dp;
     struct dirent *entry;
-    struct stat statbuf;
 
     if((dp = opendir(path.c_str())) == NULL) {
         return;
@@ -70,13 +118,15 @@ void Dir::walk() {
             case DT_REG: {
                 std::unique_ptr<File> node(new File(path + "/" + name, context));
                 children.push_back(std::move(node));
+
+
                 break;
             }
         }
     }
 
     for(auto &dir: children) {
-        dir->walk();
+        dir->build();
     }
 }
 
@@ -85,16 +135,7 @@ void Dir::walk() {
 
 
 int main() {
-    //s28::Dir::Context context;
-    //s28::Dir(".", context).walk();
-    //
     s28::init_escaping();
-
-    std::string x = "a\t\n\013\\123 ::: :_\n\n\n\\\\\"$\09fasdfgwg\xewg";
-    x[19] = 0xf5;
-
-    std::cout << "[" << s28::escape(x) << "]" << std::endl;
-    std::cout << "[" << s28::escape("Hello world!") << "]" << std::endl;
-    std::cout << (s28::unescape(s28::escape(x)) == x) << std::endl;
+    return 0;
 }
 

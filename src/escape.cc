@@ -65,6 +65,7 @@ void init_escaping() {
     esc_chars[':'] = "\\:";
     esc_chars['\n'] = "\\n";
     esc_chars['\t'] = "\\t";
+    esc_chars['\r'] = "\\r";
     esc_chars['\\'] = "\\\\";
 }
 
@@ -88,6 +89,9 @@ std::string unescape(const std::string &s) {
                     break;
                 case 't':
                     i += 1; rv += "\t";
+                    break;
+                case 'r':
+                    i += 1; rv += "\r";
                     break;
                 case '\\':
                     i += 1; rv += "\\";

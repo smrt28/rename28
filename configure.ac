@@ -34,6 +34,9 @@ AC_ARG_ENABLE(optimizations,
 
 
 
+#libcrypto
+
+PKG_CHECK_MODULES([REMOVE28], [libcrypto])
 AC_LANG_WERROR
 
 
