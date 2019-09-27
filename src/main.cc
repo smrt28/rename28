@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
-
+#include <string.h>
 #include <map>
 #include <iostream>
 #include <string>
@@ -12,31 +12,37 @@
 #include <memory>
 #include <sstream>
 #include <openssl/sha.h>
+
 #include "escape.h"
 #include "error.h"
+#include "hash.h"
 
 namespace s28 {
-class FileDescriptorGuard {
+
+class Node;
+class Traverse {
 public:
-    FileDescriptorGuard(int fd) : fd(fd) {}
-    ~FileDescriptorGuard() {
-        if (fd >= 0) ::close(fd);
-    }
-    int fd;
+    virtual void walk(const Node *) {};
 };
 
-class NodeContext;
+
 class Node {
 public:
-    Node(const std::string &path, NodeContext &context) :
-        path(path), context(context)
+    class Config {
+    };
+
+    Node(const std::string &path) :
+        path(path)
     {}
 
-    virtual void build() = 0;
+    virtual ~Node() {}
 
+    virtual void build(const Config &) = 0;
+    virtual void traverse(Traverse &t) = 0;
+
+    std::string get_path() const { return path; }
 protected:
     const std::string path;
-    NodeContext &context;
 };
 
 
@@ -44,38 +50,40 @@ class Dir : public Node {
 public:
     using Node::Node;
 
-    void build() override;
+    void build(const Config &) override;
+    void traverse(Traverse &t) override;
 
 private:
     std::vector<std::unique_ptr<Node>> children;
 };
 
+
+
+void Dir::traverse(Traverse &t) {
+    t.walk(this);
+    for (auto &a: children) {
+        a->traverse(t);
+    }
+}
+
+
 class File : public Node {
 public:
     using Node::Node;
-    void build() override;
+    void build(const Config &) override;
+    void traverse(Traverse &t) override;
+};
 
-    bool is_hashed() const { return hashed; }
-    std::string get_hash() {
-        return std::string((char *)hash, SHA256_DIGEST_LENGTH);
-    }
-private:
+void File::traverse(Traverse &t) {
+    t.walk(this);
+}
+
+
+
+
+void File::build(const Config &) {
+    /*
     unsigned char hash[SHA256_DIGEST_LENGTH];
-    bool hashed = false;
-};
-
-class NodeContext {
-public:
-    uint32_t hash_id(unsigned char *hash) { return 0; }
-
-private:
-    std::map<std::string, int> file_ids;
-};
-
-
-
-
-void File::build() {
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
     int fd = open(path.c_str(), O_RDONLY);
@@ -91,13 +99,36 @@ void File::build() {
             RAISE_ERROR("error while reading; file=" << path);
 
         SHA256_Update(&sha256, buf, len);
-    } while(len != sizeof(buf));
+    } while(len == sizeof(buf));
     SHA256_Final(hash, &sha256);
     hashed = true;
+    */
 }
 
 
-void Dir::build() {
+class Collector : public Traverse {
+public:
+    void walk(const Node *) override;
+
+    std::map<std::string, uint32_t> unique;
+};
+
+void Collector::walk(const Node *node) {
+    const File *f = dynamic_cast<const File *>(node);
+    if (f) {
+        try {
+            std::string h = hash_file_short(node->get_path());
+            auto it = unique.find(h);
+            if (it == unique.end()) {
+                unique[h] = unique.size();
+            }
+
+            std::cout << unique[h] << "::" << escape(node->get_path()) << std::endl;
+        } catch(...) {}
+    }
+}
+
+void Dir::build(const Config &config) {
     DIR *dp;
     struct dirent *entry;
 
@@ -111,22 +142,20 @@ void Dir::build() {
 
         switch(entry->d_type) {
             case DT_DIR: {
-                std::unique_ptr<Dir> node(new Dir(path + "/" + name, context));
+                std::unique_ptr<Dir> node(new Dir(path + "/" + name));
                 children.push_back(std::move(node));
                 break;
             }
             case DT_REG: {
-                std::unique_ptr<File> node(new File(path + "/" + name, context));
+                std::unique_ptr<File> node(new File(path + "/" + name));
                 children.push_back(std::move(node));
-
-
                 break;
             }
         }
     }
 
     for(auto &dir: children) {
-        dir->build();
+        dir->build(config);
     }
 }
 
@@ -136,6 +165,13 @@ void Dir::build() {
 
 int main() {
     s28::init_escaping();
+    s28::Dir d(".");
+    s28::Node::Config config;
+    d.build(config);
+
+    s28::Collector collector;
+    d.traverse(collector);
+
     return 0;
 }
 

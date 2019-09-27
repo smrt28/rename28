@@ -3,6 +3,7 @@
 
 #include <string>
 #include <exception>
+#include <sstream>
 
 #define RAISE_ERROR(msg) do { std::ostringstream self; self << msg; throw Error(self.str()); } while(0)
 
