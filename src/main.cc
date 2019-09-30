@@ -93,56 +93,8 @@ void File::traverse(Traverse &t) const {
     t.walk(this);
 }
 
-
-
-
 void File::build(Config &) {
-    /*
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    int fd = open(path.c_str(), O_RDONLY);
-    if (fd == -1) RAISE_ERROR("open for reading; file=" << path);
-    FileDescriptorGuard guard(fd);
-
-    char buf[4096];
-    ssize_t len;
-
-    do {
-        len = read(fd, buf, sizeof(buf));
-        if (len < 0)
-            RAISE_ERROR("error while reading; file=" << path);
-
-        SHA256_Update(&sha256, buf, len);
-    } while(len == sizeof(buf));
-    SHA256_Final(hash, &sha256);
-    hashed = true;
-    */
 }
-
-
-/*
-class Collector : public Traverse {
-public:
-    void walk(const Node *) override;
-    std::map<std::string, uint32_t> unique;
-};
-
-void Collector::walk(const Node *node) {
-    const File *f = dynamic_cast<const File *>(node);
-    if (f) {
-        try {
-            std::string h = hash_file_short(node->get_path());
-            auto it = unique.find(h);
-            if (it == unique.end()) {
-                unique[h] = unique.size();
-            }
-
-            std::cout << unique[h] << "::" << escape(node->get_path()) << std::endl;
-        } catch(...) {}
-    }
-}
-*/
 
 namespace aux {
 template<typename CB>
@@ -266,8 +218,6 @@ int main() {
     s28::Dir d(config, ".");
     d.build(config);
     s28::Collector collector;
-
-
 
     s28::walk(&d, boost::bind(&s28::Collector::index, &collector, _1));
     s28::walk(&d, boost::bind(&s28::Collector::hash, &collector, _1));
