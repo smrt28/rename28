@@ -63,13 +63,16 @@ protected:
 
 class Dir : public Node {
 public:
-    using Node::Node;
+    Dir(Config &config, const std::string &path, Dir *parent) : Node(config, path), parent(parent) {
+
+    }
 
     void build(Config &) override;
     void traverse(Traverse &t) const override;
 
 private:
     std::vector<std::unique_ptr<Node>> children;
+    Dir *parent = nullptr;
 };
 
 
@@ -117,14 +120,25 @@ void walk(const Node *node, CB cb) {
     node->traverse(collector);
 }
 
+class DirDescriptorGuard {
+public:
+    DirDescriptorGuard(DIR *dir) : dir(dir) {}
+    ~DirDescriptorGuard() {
+        if (dir) ::closedir(dir);
+    }
+    DIR *dir;
+};
+
 
 void Dir::build(Config &config) {
-    DIR *dp;
-    struct dirent *entry;
+    DIR *dp = nullptr;
+    struct dirent *entry = nullptr;
 
     if((dp = opendir(path.c_str())) == NULL) {
         return;
     }
+
+    DirDescriptorGuard guard(dp);
 
     while(( entry = readdir(dp)) != NULL) {
         std::string name = entry->d_name;
@@ -132,7 +146,7 @@ void Dir::build(Config &config) {
 
         switch(entry->d_type) {
             case DT_DIR: {
-                std::unique_ptr<Dir> node(new Dir(config, path + "/" + name));
+                std::unique_ptr<Dir> node(new Dir(config, path + "/" + name, this));
                 children.push_back(std::move(node));
                 break;
             }
@@ -152,6 +166,7 @@ void Dir::build(Config &config) {
 class Collector {
     struct Record {
         std::string hash;
+        std::string longhash;
         uint32_t order = 0;
         const Node *node = nullptr;
     };
@@ -165,6 +180,7 @@ public:
         const File *f = dynamic_cast<const File *>(n);
         if (!f) return;
 
+        std::cerr << "hashing: " << f->get_path() << std::endl;
         records[f->get_id()].hash = hash_file_short(f->get_path());
     }
 
@@ -194,6 +210,23 @@ public:
         }
     }
 
+    void short_hashes() {
+        std::map<std::string, uint32_t> shorts;
+
+        for (auto &r: records) {
+            auto it = shorts.find(r.second.hash);
+            if (it != shorts.end()) continue;
+            shorts[r.second.hash] = shorts.size();
+        }
+
+        int alignment = base26suggest_alignment(shorts.size());
+
+        for (auto &r: records) {
+            r.second.longhash = r.second.hash;
+            r.second.hash = s28::base26encode(shorts[r.second.hash], alignment);
+        }
+    }
+
     void dump() {
         for (auto &r: records) {
             if (dynamic_cast<const File *>(r.second.node)) {
@@ -215,7 +248,7 @@ int main() {
     s28::init_escaping();
 
     s28::Node::Config config;
-    s28::Dir d(config, ".");
+    s28::Dir d(config, ".", nullptr);
     d.build(config);
     s28::Collector collector;
 
@@ -223,6 +256,7 @@ int main() {
     s28::walk(&d, boost::bind(&s28::Collector::hash, &collector, _1));
 
     collector.find_duplicates();
+    collector.short_hashes();
     collector.dump();
 
     return 0;

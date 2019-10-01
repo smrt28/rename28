@@ -113,4 +113,25 @@ std::string unescape(const std::string &s) {
     return rv;
 }
 
+std::string base26encode(uint32_t n, int align) {
+    static const char *abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::string rv;
+    while(n > 0 || align > 0)
+    {
+        align --;
+        rv += abc[n % 26];
+        n/=26;
+    }
+    return rv;
+}
+
+int base26suggest_alignment(uint32_t n) {
+    int rv = 0;
+    while(n) {
+        rv++;
+        n/=26;
+    }
+    return rv;
+}
+
 } // namespace s28

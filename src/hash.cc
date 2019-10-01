@@ -5,6 +5,7 @@
 
 #include <openssl/sha.h>
 #include <string>
+#include <errno.h>
 
 #include "error.h"
 
@@ -26,7 +27,10 @@ std::string hash_file(const std::string &path) {
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
     int fd = open(path.c_str(), O_RDONLY);
-    if (fd == -1) RAISE_ERROR("open for reading; file=" << path);
+    if (fd == -1) {
+        perror("err:");
+        RAISE_ERROR("open for reading; file=" << path);
+    }
     FileDescriptorGuard guard(fd);
 
     char buf[4096];
