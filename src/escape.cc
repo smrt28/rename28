@@ -69,10 +69,14 @@ void init_escaping() {
     esc_chars['\\'] = "\\\\";
 }
 
-std::string escape(const std::string &s) {
+std::string escape(const std::string &s, bool spaces) {
     std::string rv;
 
     for (char c: s) {
+        if (spaces && c == ' ') {
+            rv += "\\ ";
+            continue;
+        }
         rv += esc_chars[(unsigned char )c];
     }
     return rv;
@@ -131,6 +135,16 @@ int base26suggest_alignment(uint32_t n) {
         rv++;
         n/=26;
     }
+    return rv;
+}
+
+std::string str_align(const std::string s, size_t len) {
+    if (len <= s.size()) return s;
+    std::string rv = s;
+    for (size_t i = 0; i < len - s.size(); ++i) {
+        rv += " ";
+    }
+
     return rv;
 }
 

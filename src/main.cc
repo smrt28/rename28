@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/stat.h>
 
 
 #include <set>
@@ -15,6 +16,7 @@
 #include <memory>
 #include <sstream>
 #include <openssl/sha.h>
+#include <boost/algorithm/string/join.hpp>
 
 #include <boost/bind.hpp>
 
@@ -164,11 +166,12 @@ void Dir::build(Config &config) {
 }
 
 class Collector {
+    std::map<std::string, std::set<ino_t> > dups;
+
     struct Record {
         std::string hash;
-        std::string longhash;
-        uint32_t order = 0;
         const Node *node = nullptr;
+        ino_t inode = 0;
     };
 public:
 
@@ -179,65 +182,74 @@ public:
     void hash(const Node *n) {
         const File *f = dynamic_cast<const File *>(n);
         if (!f) return;
-
         std::cerr << "hashing: " << f->get_path() << std::endl;
-        records[f->get_id()].hash = hash_file_short(f->get_path());
+        records[f->get_id()].hash = hash_file(f->get_path());
+    }
+
+    void stat(const Node *n) {
+        struct stat stt;
+        if (::stat(n->get_path().c_str(), &stt) == -1) {
+            RAISE_ERROR("stat failed; file=" << n->get_path());
+        }
+        records[n->get_id()].inode = stt.st_ino;
     }
 
     void find_duplicates() {
-        std::map<std::string, uint32_t> dups;
-        {
-            std::set<std::string> all;
-            for (auto const &record: records) {
-                if (all.count(record.second.hash)) {
-                    auto it = dups.find(record.second.hash);
-                    if (it == dups.end()) {
-                        dups[record.second.hash] = 2;
-                    } else {
-                        it->second ++;
-                    }
-                } else {
-                    all.insert(record.second.hash);
-                }
-            }
-        }
-
-        for (auto &record: records) {
-            auto it = dups.find(record.second.hash);
-            if (it == dups.end()) continue;
-            record.second.order = it->second;
-            it->second--;
+        for (auto const &r: records) {
+            dups[r.second.hash].insert(r.second.inode);
         }
     }
 
-    void short_hashes() {
-        std::map<std::string, uint32_t> shorts;
-
-        for (auto &r: records) {
-            auto it = shorts.find(r.second.hash);
-            if (it != shorts.end()) continue;
-            shorts[r.second.hash] = shorts.size();
-        }
-
-        int alignment = base26suggest_alignment(shorts.size());
-
-        for (auto &r: records) {
-            r.second.longhash = r.second.hash;
-            r.second.hash = s28::base26encode(shorts[r.second.hash], alignment);
-        }
-    }
 
     void dump() {
+
+        size_t max_path_len = 0;
         for (auto &r: records) {
-            if (dynamic_cast<const File *>(r.second.node)) {
-                std::cout << r.second.hash << "-" << r.second.order << ": " << r.second.node->get_path() << std::endl;
+            max_path_len = std::max(r.second.node->get_path().size(), max_path_len);
+        }
+
+        for (auto &r: records) {
+            if (!dynamic_cast<const File *>(r.second.node)) continue;
+
+            std::cout << str_align(escape(r.second.node->get_path(), true), max_path_len + 1) <<
+                " #" << r.second.inode;
+
+            const std::set<ino_t> &duplicates = dups[r.second.hash];
+
+            if (duplicates.size() > 1) {
+                std::vector<std::string> dups;
+                for (auto inode: duplicates) {
+                    if (inode == r.second.inode) continue;
+                    dups.push_back(std::to_string(inode));
+                }
+
+                std::string joined = boost::algorithm::join(dups, ", ");
+                std::cout << "; " << joined;
             }
+
+            std::cout << std::endl;
         }
     }
 
 
 private:
     std::map<uint32_t, Record> records;
+};
+
+
+class MultiBind {
+    public:
+        class Call {
+            public:
+                virtual void call() {};
+
+        };
+
+        MultiBind(int threads, Call call) : threads(threads), call(call) {}
+    private:
+        int threads;
+        Call call;
+
 };
 
 
@@ -254,9 +266,9 @@ int main() {
 
     s28::walk(&d, boost::bind(&s28::Collector::index, &collector, _1));
     s28::walk(&d, boost::bind(&s28::Collector::hash, &collector, _1));
+    s28::walk(&d, boost::bind(&s28::Collector::stat, &collector, _1));
 
     collector.find_duplicates();
-    collector.short_hashes();
     collector.dump();
 
     return 0;
