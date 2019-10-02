@@ -32,24 +32,24 @@ void Dir::build(Config &config) {
     DIR *dp = nullptr;
     struct dirent *entry = nullptr;
 
-    if((dp = opendir(path.c_str())) == NULL) {
+    if((dp = opendir(get_path().c_str())) == NULL) {
         return;
     }
 
     DirDescriptorGuard guard(dp);
 
     while(( entry = readdir(dp)) != NULL) {
-        std::string name = entry->d_name;
-        if (name == ".." || name == ".") continue;
+        std::string dname = entry->d_name;
+        if (dname == ".." || dname == ".") continue;
 
         switch(entry->d_type) {
             case DT_DIR: {
-                std::unique_ptr<Dir> node(new Dir(config, path + "/" + name, this));
+                std::unique_ptr<Dir> node(new Dir(config, dname, this));
                 children.push_back(std::move(node));
                 break;
             }
             case DT_REG: {
-                std::unique_ptr<File> node(new File(config, path + "/" + name, this));
+                std::unique_ptr<File> node(new File(config, dname, this));
                 children.push_back(std::move(node));
                 break;
             }
@@ -60,5 +60,11 @@ void Dir::build(Config &config) {
         dir->build(config);
     }
 }
+
+std::string Dir::get_path() const {
+    if (!parent) return "./";
+    return parent->get_path() + name + "/";
+}
+
 
 } // namespace s28
