@@ -49,7 +49,7 @@ void Dir::build(Config &config) {
                 break;
             }
             case DT_REG: {
-                std::unique_ptr<File> node(new File(config, path + "/" + name));
+                std::unique_ptr<File> node(new File(config, path + "/" + name, this));
                 children.push_back(std::move(node));
                 break;
             }

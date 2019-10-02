@@ -80,6 +80,7 @@ public:
     }
 
     void stat(const Node *n) {
+        std::cerr << "stat: " <<  n->get_path() << std::endl;
         struct stat stt;
         if (::stat(n->get_path().c_str(), &stt) == -1) {
             RAISE_ERROR("stat failed; file=" << n->get_path());
@@ -88,12 +89,14 @@ public:
     }
 
     void find_duplicates() {
+        std::cerr << "finding duplicates" << std::endl;
         for (auto const &r: records) {
             dups[r.second.hash].insert(r.second.inode);
         }
     }
 
     void find_links() {
+        std::cerr << "looking for hard links" << std::endl;
         std::map<ino_t, int> links;
         for (auto const &r: records) {
             auto link = links.find(r.second.inode);
@@ -106,6 +109,7 @@ public:
             }
         }
 
+        std::cerr << "counting hard links" << std::endl;
         for (auto &r: records) {
             r.second.links_total = links[r.second.inode];
         }
@@ -130,7 +134,7 @@ public:
 
             std::cout << str_align(escape(r.second.node->get_path(), true), max_path_len + 1) <<
                 " #" << r.second.inode;
-           
+  
             if (r.second.links > 0) {
                 std::cout<< ".(" << r.second.links << "/" << r.second.links_total << ")";
             }
