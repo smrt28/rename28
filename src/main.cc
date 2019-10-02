@@ -20,86 +20,19 @@
 
 #include <boost/bind.hpp>
 
+#include "node.h"
+#include "dir.h"
+
 #include "escape.h"
 #include "error.h"
 #include "hash.h"
+#include "file.h"
+
 
 namespace s28 {
 
-class Node;
-
-class Traverse {
-public:
-    virtual void walk(const Node *) {};
-};
 
 
-class Node {
-public:
-    class Config {
-    public:
-        uint32_t get_next_id() {
-            return ++next_id;
-        }
-    private:
-        uint32_t next_id = 0;
-    };
-
-    Node(Config &config, const std::string &path) :
-        path(path), id(config.get_next_id())
-    {}
-
-    virtual ~Node() {}
-
-    virtual void build(Config &) = 0;
-    virtual void traverse(Traverse &t) const = 0;
-
-    std::string get_path() const { return path; }
-
-    uint32_t get_id() const { return id; }
-protected:
-    const std::string path;
-    uint32_t id;
-};
-
-
-class Dir : public Node {
-public:
-    Dir(Config &config, const std::string &path, Dir *parent) : Node(config, path), parent(parent) {
-
-    }
-
-    void build(Config &) override;
-    void traverse(Traverse &t) const override;
-
-private:
-    std::vector<std::unique_ptr<Node>> children;
-    Dir *parent = nullptr;
-};
-
-
-
-void Dir::traverse(Traverse &t) const {
-    t.walk(this);
-    for (auto &a: children) {
-        a->traverse(t);
-    }
-}
-
-
-class File : public Node {
-public:
-    using Node::Node;
-    void build(Config &) override;
-    void traverse(Traverse &t) const override;
-};
-
-void File::traverse(Traverse &t) const {
-    t.walk(this);
-}
-
-void File::build(Config &) {
-}
 
 namespace aux {
 template<typename CB>
@@ -122,48 +55,6 @@ void walk(const Node *node, CB cb) {
     node->traverse(collector);
 }
 
-class DirDescriptorGuard {
-public:
-    DirDescriptorGuard(DIR *dir) : dir(dir) {}
-    ~DirDescriptorGuard() {
-        if (dir) ::closedir(dir);
-    }
-    DIR *dir;
-};
-
-
-void Dir::build(Config &config) {
-    DIR *dp = nullptr;
-    struct dirent *entry = nullptr;
-
-    if((dp = opendir(path.c_str())) == NULL) {
-        return;
-    }
-
-    DirDescriptorGuard guard(dp);
-
-    while(( entry = readdir(dp)) != NULL) {
-        std::string name = entry->d_name;
-        if (name == ".." || name == ".") continue;
-
-        switch(entry->d_type) {
-            case DT_DIR: {
-                std::unique_ptr<Dir> node(new Dir(config, path + "/" + name, this));
-                children.push_back(std::move(node));
-                break;
-            }
-            case DT_REG: {
-                std::unique_ptr<File> node(new File(config, path + "/" + name));
-                children.push_back(std::move(node));
-                break;
-            }
-        }
-    }
-
-    for(auto &dir: children) {
-        dir->build(config);
-    }
-}
 
 class Collector {
     std::map<std::string, std::set<ino_t> > dups;
@@ -172,6 +63,8 @@ class Collector {
         std::string hash;
         const Node *node = nullptr;
         ino_t inode = 0;
+        int links_total;
+        int links = -1;
     };
 public:
 
@@ -200,6 +93,30 @@ public:
         }
     }
 
+    void find_links() {
+        std::map<ino_t, int> links;
+        for (auto const &r: records) {
+            auto link = links.find(r.second.inode);
+            if (link == links.end()) {
+                links[r.second.inode] = 0;
+            } else {
+                if (link->second == 0)
+                    link->second ++;
+                link->second ++;
+            }
+        }
+
+        for (auto &r: records) {
+            r.second.links_total = links[r.second.inode];
+        }
+
+        for (auto &r: records) {
+            auto link = links.find(r.second.inode);
+            r.second.links = link->second;
+            link->second --;
+        }
+    }
+
 
     void dump() {
 
@@ -213,6 +130,10 @@ public:
 
             std::cout << str_align(escape(r.second.node->get_path(), true), max_path_len + 1) <<
                 " #" << r.second.inode;
+           
+            if (r.second.links > 0) {
+                std::cout<< ".(" << r.second.links << "/" << r.second.links_total << ")";
+            }
 
             const std::set<ino_t> &duplicates = dups[r.second.hash];
 
@@ -242,14 +163,12 @@ class MultiBind {
         class Call {
             public:
                 virtual void call() {};
-
         };
 
         MultiBind(int threads, Call call) : threads(threads), call(call) {}
     private:
         int threads;
         Call call;
-
 };
 
 
@@ -269,6 +188,7 @@ int main() {
     s28::walk(&d, boost::bind(&s28::Collector::stat, &collector, _1));
 
     collector.find_duplicates();
+    collector.find_links();
     collector.dump();
 
     return 0;
