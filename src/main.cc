@@ -56,7 +56,7 @@ void walk(const Node *node, CB cb) {
 }
 
 
-class Collector {
+class Collector : public Traverse{
     std::map<std::string, std::set<ino_t> > dups;
 
     struct Record {
@@ -121,63 +121,46 @@ public:
         }
     }
 
+    void on_file(const Node *n) {
+        for(int i = 0; i < dep; ++i) {
+            std::cout << "    ";
+        }
+        Record &rec = records[n->get_id()];
+        const std::set<ino_t> &duplicates = dups[rec.hash];
+        std::cout << str_align(s28::escape(n->get_name(), true), 50) << " #" << *duplicates.begin();
 
-    void dump() {
-
-        size_t max_path_len = 0;
-        for (auto &r: records) {
-            max_path_len = std::max(r.second.node->get_path().size(), max_path_len);
+        if (duplicates.size() > 1) {
+            std::cout << ".DUP";// << duplicates.size();
         }
 
-        for (auto &r: records) {
-            if (!dynamic_cast<const File *>(r.second.node)) continue;
+        std::cout << std::endl;
+    }
 
-            std::cout << str_align(escape(r.second.node->get_path(), true), max_path_len + 1) <<
-                " #" << r.second.inode;
-  
-            if (r.second.links > 0) {
-                std::cout<< ".(" << r.second.links << "/" << r.second.links_total << ")";
-            }
-
-            const std::set<ino_t> &duplicates = dups[r.second.hash];
-
-            if (duplicates.size() > 1) {
-                std::vector<std::string> dups;
-                for (auto inode: duplicates) {
-                    if (inode == r.second.inode) continue;
-                    dups.push_back(std::to_string(inode));
-                }
-
-                std::string joined = boost::algorithm::join(dups, ", ");
-                std::cout << "; " << joined;
-            }
-
-            std::cout << std::endl;
+    void on_dir_begin(const Node *n) {
+        for(int i = 0; i < dep; ++i) {
+            std::cout << "    ";
         }
+        std::cout << n->get_name() << " {" << std::endl;
+
+        dep ++;
+    }
+
+    void on_dir_end(const Node *) {
+        dep--;
+        for(int i = 0; i < dep; ++i) {
+            std::cout << "    ";
+        }
+        std::cout << "}" << std::endl;
     }
 
 
 private:
+    int dep = 0;
     std::map<uint32_t, Record> records;
 };
 
 
-class MultiBind {
-    public:
-        class Call {
-            public:
-                virtual void call() {};
-        };
-
-        MultiBind(int threads, Call call) : threads(threads), call(call) {}
-    private:
-        int threads;
-        Call call;
-};
-
-
 } // namespace s28
-
 
 int main() {
     s28::init_escaping();
@@ -185,6 +168,8 @@ int main() {
     s28::Node::Config config;
     s28::Dir d(config, ".", nullptr);
     d.build(config);
+
+
     s28::Collector collector;
 
     s28::walk(&d, boost::bind(&s28::Collector::index, &collector, _1));
@@ -193,7 +178,10 @@ int main() {
 
     collector.find_duplicates();
     collector.find_links();
-    collector.dump();
+
+ //   s28::walk(&d, boost::bind(&s28::Collector::dump, &collector, _1));
+
+    d.traverse(collector);
 
     return 0;
 }

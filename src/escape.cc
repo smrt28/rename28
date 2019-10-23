@@ -67,6 +67,10 @@ void init_escaping() {
     esc_chars['\t'] = "\\t";
     esc_chars['\r'] = "\\r";
     esc_chars['\\'] = "\\\\";
+    esc_chars['\\'] = "\\\\";
+    esc_chars['{'] = "\\{";
+    esc_chars['}'] = "\\}";
+    esc_chars['#'] = "\\#";
 }
 
 std::string escape(const std::string &s, bool spaces) {

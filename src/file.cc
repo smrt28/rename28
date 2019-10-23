@@ -5,6 +5,7 @@ namespace s28 {
 
 void File::traverse(Traverse &t) const {
     t.walk(this);
+    t.on_file(this);
 }
 
 void File::build(Config &) {

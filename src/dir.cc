@@ -22,9 +22,11 @@ public:
 
 void Dir::traverse(Traverse &t) const {
     t.walk(this);
-    for (auto &a: children) {
-        a->traverse(t);
+    t.on_dir_begin(this);
+    for (size_t i = 0; i < children.size(); ++i) {
+        children[i]->traverse(t);
     }
+    t.on_dir_end(this);
 }
 
 

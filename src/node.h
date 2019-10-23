@@ -10,7 +10,10 @@ class Node;
 
 class Traverse {
 public:
-    virtual void walk(const Node *) = 0;
+    virtual void walk(const Node *) {}
+    virtual void on_file(const Node *) {}
+    virtual void on_dir_begin(const Node *) {}
+    virtual void on_dir_end(const Node *) {}
 };
 
 class Node {
@@ -33,8 +36,11 @@ public:
     virtual void build(Config &) = 0;
     virtual void traverse(Traverse &t) const = 0;
     virtual std::string get_path() const = 0;
+    virtual std::string get_name() const = 0;
+    virtual Node * get_parent() = 0;
 
     uint32_t get_id() const { return id; }
+
 
 protected:
     uint32_t id;

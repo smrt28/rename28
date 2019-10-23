@@ -15,12 +15,20 @@ public:
         parent(parent)
     {}
 
+    typedef std::vector<std::unique_ptr<Node>> Children;
+
     virtual std::string get_path() const override;
     void build(Config &) override;
     void traverse(Traverse &t) const override;
 
+    Node * get_parent() { return parent; }
+    std::string get_name() const override { return name; }
+
+    const Children & get_children() { return children; }
+
+
 private:
-    std::vector<std::unique_ptr<Node>> children;
+    Children children;
     std::string name;
     Dir *parent = nullptr;
 };
