@@ -56,16 +56,52 @@ void walk(const Node *node, CB cb) {
 }
 
 
-class Collector : public Traverse{
-    std::map<std::string, std::set<ino_t> > dups;
+namespace collector {
 
-    struct Record {
-        std::string hash;
-        const Node *node = nullptr;
-        ino_t inode = 0;
-        int links_total;
-        int links = -1;
-    };
+struct Record {
+    std::string hash;
+    const Node *node = nullptr;
+    ino_t inode = 0;
+    int links_total;
+    int links = -1;
+};
+
+typedef std::map<uint32_t, Record> Records;
+
+
+void find(const Node *n, Records &records) {
+    records[n->get_id()].node = n;
+}
+
+void stat(Records &records) {
+    for (auto &rec: records) {
+        struct stat stt;
+        std::string path = rec.second.node->get_path();
+        if (::stat(path.c_str(), &stt) == -1) {
+            RAISE_ERROR("stat failed; file=" << rec.second.node->get_path());
+        }
+        rec.second.inode = stt.st_ino;
+    }
+}
+
+void hash(Records &records) {
+    for (auto &rec: records) {
+        const Node *n = rec.second.node;
+        const File *f = dynamic_cast<const File *>(n);
+        if (!f) return;
+        rec.second.hash = hash_file(f->get_path());
+    }
+}
+
+
+
+}
+
+#if 0
+
+class Collector {
+    std::map<std::string, std::set<ino_t> > dups;
+    Records records;
 public:
 
     void index(const Node *n) {
@@ -120,7 +156,7 @@ public:
             link->second --;
         }
     }
-
+/*
     void on_file(const Node *n) {
         for(int i = 0; i < dep; ++i) {
             std::cout << "    ";
@@ -156,10 +192,14 @@ public:
 
 private:
     int dep = 0;
-    std::map<uint32_t, Record> records;
+    */
 };
 
 
+class InodeCollector : public Traverse {
+
+};
+#endif
 } // namespace s28
 
 int main() {
@@ -169,6 +209,19 @@ int main() {
     s28::Dir d(config, ".", nullptr);
     d.build(config);
 
+    s28::collector::Records records;
+    s28::walk(&d, boost::bind(&s28::collector::find, _1, boost::ref(records)));
+
+    s28::collector::stat(records);
+    s28::collector::hash(records);
+
+
+    for (auto const &it: records) {
+        auto &rec = it.second;
+        const s28::Node *n = rec.node;
+        std::cout << n->get_path() << " " << rec.inode << std::endl;
+    }
+/*
 
     s28::Collector collector;
 
@@ -178,10 +231,10 @@ int main() {
 
     collector.find_duplicates();
     collector.find_links();
-
+*/
  //   s28::walk(&d, boost::bind(&s28::Collector::dump, &collector, _1));
 
-    d.traverse(collector);
+//    d.traverse(collector);
 
     return 0;
 }
