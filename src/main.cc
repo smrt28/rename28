@@ -49,6 +49,13 @@ private:
 };
 }
 
+class Progress {
+public:
+    virtual void tick(size_t n, size_t total) {
+//        std::cerr << n << "/" << total << std::endl;
+    }
+};
+
 template<typename CB>
 void walk(const Node *node, CB cb) {
     aux::Collector<CB> collector(node, cb);
@@ -56,11 +63,15 @@ void walk(const Node *node, CB cb) {
 }
 
 
+
 namespace collector {
 
-struct Record {
+class Record : public boost::noncopyable {
+public:
     std::string hash;
     const Node *node = nullptr;
+    Record *repre = nullptr;
+    Record *next = nullptr;
     ino_t inode = 0;
     int links_total;
     int links = -1;
@@ -73,8 +84,10 @@ void find(const Node *n, Records &records) {
     records[n->get_id()].node = n;
 }
 
-void stat(Records &records) {
+void stat(Records &records, Progress &progress) {
+    size_t cnt = 0;
     for (auto &rec: records) {
+        progress.tick(++cnt, records.size());
         struct stat stt;
         std::string path = rec.second.node->get_path();
         if (::stat(path.c_str(), &stt) == -1) {
@@ -84,15 +97,41 @@ void stat(Records &records) {
     }
 }
 
-void hash(Records &records) {
+void hash(Records &records, Progress &progress) {
+    size_t cnt = 0;
     for (auto &rec: records) {
+        progress.tick(++cnt, records.size());
         const Node *n = rec.second.node;
         const File *f = dynamic_cast<const File *>(n);
-        if (!f) return;
-        rec.second.hash = hash_file(f->get_path());
+        if (!f) continue;
+        rec.second.hash = hash_file_short(f->get_path());
     }
 }
 
+
+void group_duplicates(Records &records, Progress &progress) {
+    size_t cnt = 0;
+    std::map<std::string, s28::collector::Record *> uniq;
+    for (auto &recit: records) {
+        progress.tick(++cnt, records.size());
+        auto &rec = recit.second;
+        if (rec.hash.empty()) continue;
+        auto it = uniq.find(rec.hash);
+        if (it == uniq.end()) {
+            uniq[rec.hash] = &rec;
+        } else {
+            s28::collector::Record *repre = it->second->repre;
+            if (repre) {
+                rec.repre = repre;
+                rec.next = repre->next;
+            } else {
+                repre = it->second;
+                repre->repre = rec.repre = repre;
+            }
+            repre->next = &rec;
+        }
+    }
+}
 
 
 }
@@ -212,14 +251,33 @@ int main() {
     s28::collector::Records records;
     s28::walk(&d, boost::bind(&s28::collector::find, _1, boost::ref(records)));
 
-    s28::collector::stat(records);
-    s28::collector::hash(records);
+    s28::Progress progress;
 
 
-    for (auto const &it: records) {
-        auto &rec = it.second;
-        const s28::Node *n = rec.node;
-        std::cout << n->get_path() << " " << rec.inode << std::endl;
+    s28::collector::stat(records, progress);
+    s28::collector::hash(records, progress);
+
+    s28::collector::group_duplicates(records, progress);
+
+    for (auto &recit: records) {
+        auto &rec = recit.second;
+        if (rec.hash.empty()) continue;
+
+        std::cout << rec.node->get_path() << " " << (rec.hash);
+        int cnt = 0;
+        s28::collector::Record *next = rec.repre;
+        while (next) {
+            ++cnt;
+            next = next->next;
+        }
+
+        if (rec.repre) {
+            std::cout << " = " << rec.repre->node->get_path() ;
+
+        }
+
+        std::cout << std::endl;
+//        std::cout << " " << rec.inode << " " << cnt << std::endl;
     }
 /*
 

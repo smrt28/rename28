@@ -89,7 +89,7 @@ std::string hash_file_short(const std::string &path) {
     std::string h = hash_file(path);
     char buf[256];
     base32_encode((const uint8_t *)h.c_str(), 32, (uint8_t *)buf, sizeof(buf));
-    return std::string(buf, 15);
+    return std::string(buf, 18);
 }
 
 }
