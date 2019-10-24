@@ -73,15 +73,16 @@ public:
     Record *repre = nullptr;
     Record *next = nullptr;
     ino_t inode = 0;
-    int links_total;
-    int links = -1;
+    bool last = false;
 };
 
-typedef std::map<uint32_t, Record> Records;
+typedef std::vector<unique_ptr<Record>> Records;
 
 
 void find(const Node *n, Records &records) {
-    records[n->get_id()].node = n;
+    std::uniqie_ptr<Record> rec(new Record());
+    rec->node = n;
+    records.push_back(std::move(rec));
 }
 
 void stat(Records &records, Progress &progress) {
@@ -89,11 +90,11 @@ void stat(Records &records, Progress &progress) {
     for (auto &rec: records) {
         progress.tick(++cnt, records.size());
         struct stat stt;
-        std::string path = rec.second.node->get_path();
+        std::string path = rec->node->get_path();
         if (::stat(path.c_str(), &stt) == -1) {
-            RAISE_ERROR("stat failed; file=" << rec.second.node->get_path());
+            RAISE_ERROR("stat failed; file=" << rec->node->get_path());
         }
-        rec.second.inode = stt.st_ino;
+        rec->inode = stt.st_ino;
     }
 }
 
@@ -101,10 +102,10 @@ void hash(Records &records, Progress &progress) {
     size_t cnt = 0;
     for (auto &rec: records) {
         progress.tick(++cnt, records.size());
-        const Node *n = rec.second.node;
+        const Node *n = rec->node;
         const File *f = dynamic_cast<const File *>(n);
         if (!f) continue;
-        rec.second.hash = hash_file_short(f->get_path());
+        rec->hash = hash_file_short(f->get_path());
     }
 }
 
@@ -133,6 +134,27 @@ void group_duplicates(Records &records, Progress &progress) {
     }
 }
 
+
+class RecordsBuilder : public Traverse {
+public:
+    RecordsBuilder(Records &records) : records(records) {}
+    void on_file(const Node *) override {
+
+    }
+
+    void on_dir_begin(const Node *) override {
+
+    }
+
+    void on_dir_end(const Node *) override {
+        records.last();
+
+    }
+
+
+private:
+    Records &records;
+};
 
 }
 
