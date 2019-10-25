@@ -76,11 +76,11 @@ public:
     bool last = false;
 };
 
-typedef std::vector<unique_ptr<Record>> Records;
+typedef std::vector<std::unique_ptr<Record>> Records;
 
 
 void find(const Node *n, Records &records) {
-    std::uniqie_ptr<Record> rec(new Record());
+    std::unique_ptr<Record> rec(new Record());
     rec->node = n;
     records.push_back(std::move(rec));
 }
@@ -113,23 +113,22 @@ void hash(Records &records, Progress &progress) {
 void group_duplicates(Records &records, Progress &progress) {
     size_t cnt = 0;
     std::map<std::string, s28::collector::Record *> uniq;
-    for (auto &recit: records) {
+    for (auto &rec: records) {
         progress.tick(++cnt, records.size());
-        auto &rec = recit.second;
-        if (rec.hash.empty()) continue;
-        auto it = uniq.find(rec.hash);
+        if (rec->hash.empty()) continue;
+        auto it = uniq.find(rec->hash);
         if (it == uniq.end()) {
-            uniq[rec.hash] = &rec;
+            uniq[rec->hash] = rec.get();
         } else {
             s28::collector::Record *repre = it->second->repre;
             if (repre) {
-                rec.repre = repre;
-                rec.next = repre->next;
+                rec->repre = repre;
+                rec->next = repre->next;
             } else {
                 repre = it->second;
-                repre->repre = rec.repre = repre;
+                repre->repre = rec->repre = repre;
             }
-            repre->next = &rec;
+            repre->next = rec.get();
         }
     }
 }
@@ -147,8 +146,7 @@ public:
     }
 
     void on_dir_end(const Node *) override {
-        records.last();
-
+        records.back()->last = true;
     }
 
 
@@ -281,20 +279,19 @@ int main() {
 
     s28::collector::group_duplicates(records, progress);
 
-    for (auto &recit: records) {
-        auto &rec = recit.second;
-        if (rec.hash.empty()) continue;
+    for (auto &rec: records) {
+        if (rec->hash.empty()) continue;
 
-        std::cout << rec.node->get_path() << " " << (rec.hash);
+        std::cout << rec->node->get_path() << " " << (rec->hash);
         int cnt = 0;
-        s28::collector::Record *next = rec.repre;
+        s28::collector::Record *next = rec->repre;
         while (next) {
             ++cnt;
             next = next->next;
         }
 
-        if (rec.repre) {
-            std::cout << " = " << rec.repre->node->get_path() ;
+        if (rec->repre) {
+            std::cout << " = " << rec->repre->node->get_path() ;
 
         }
 
