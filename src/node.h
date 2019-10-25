@@ -20,15 +20,9 @@ class Node {
 public:
     class Config {
     public:
-        uint32_t get_next_id() {
-            return ++next_id;
-        }
-    private:
-        uint32_t next_id = 0;
     };
 
-    Node(Config &config) :
-        id(config.get_next_id())
+    Node(Config &config)
     {}
 
     virtual ~Node() {}
@@ -39,11 +33,12 @@ public:
     virtual std::string get_name() const = 0;
     virtual Node * get_parent() = 0;
 
-    uint32_t get_id() const { return id; }
 
-
-protected:
-    uint32_t id;
+    template <typename T>
+    bool is() const {
+        if (dynamic_cast<const T *>(this)) return true;
+        return false;
+    }
 };
 
 

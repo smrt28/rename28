@@ -7,7 +7,7 @@ namespace s28 {
 
 void init_escaping();
 
-std::string escape(const std::string &s, bool spaces = false);
+std::string escape(const std::string &s, bool spaces = true);
 std::string unescape(const std::string &s);
 
 std::string base26encode(uint32_t, int align = 1);
