@@ -17,6 +17,12 @@ TEST(Dummy, Escape) {
     try {
         EXPECT_TRUE(check(es, "asb\xF1" "1\"  g"));
         EXPECT_TRUE(check(es, ""));
+        EXPECT_TRUE(check(es, "a"));
+        EXPECT_TRUE(check(es, "{a}"));
+        EXPECT_TRUE(check(es, "''"));
+        EXPECT_TRUE(check(es, "''c'''"));
+        EXPECT_TRUE(check(es, "ab"));
+        EXPECT_TRUE(check(es, "abc"));
         EXPECT_TRUE(check(es, "\t\r\n \"\'"));
         EXPECT_TRUE(check(es, "\t\r\n \\xFF\\xF0\"\'"));
     } catch (const std::exception &e) {

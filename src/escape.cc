@@ -95,12 +95,8 @@ void Escaper::escchar(char c, char *out) {
         out[0] = '\\'; out[1] = ' '; out[2] = 0; return;
     }
 
-    if (config.quotes1 && c == '\'') {
+    if (config.quote && c == '\'') {
         out[0] = '\\'; out[1] = '\''; out[2] = 0; return;
-    }
-
-    if (config.quotes2 && c == '\"') {
-        out[0] = '\\'; out[1] = '\"'; out[2] = 0; return;
     }
 
     if (!isprint(c)) {
@@ -142,6 +138,10 @@ std::string Escaper::unescape(const std::string &s) {
     std::string rv;
     size_t i = 0;
     size_t size = s.size();
+
+    if (config.quote && s.size() >= 2 && s[0] == '\'' && s[size - 1] == '\'') {
+        i++; size--;
+    }
 
     for (; i < size; ++i) {
         if (s[i] == '\\') {

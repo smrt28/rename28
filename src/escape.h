@@ -9,9 +9,7 @@ class Escaper {
 public:
     class Config {
     public:
-        bool quote = false;
-        bool quotes1 = true;
-        bool quotes2 = true;
+        bool quote = true;
         bool spaces = false;
     };
 
