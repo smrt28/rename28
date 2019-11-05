@@ -8,7 +8,7 @@
 #include <vector>
 #include <memory>
 #include <sstream>
-
+#include <algorithm>
 
 #include "error.h"
 #include "escape.h"
@@ -43,84 +43,10 @@ int hex2int(char c) {
         case 'F': return 15;
         case 'f': return 15;
     }
-    throw 1;
+    RAISE_ERROR("hex2int failed");
 }
 
 } // namespace
-
-void init_escaping() {
-    const char *hex = "0123456789ABCDEF";
-    for (int i = 0; i < 256; ++i) {
-        if (isprint(i)) {
-            char buf[2];
-            buf[0] = i;
-            buf[1] = 0;
-            esc_chars[i] = buf;
-        } else {
-            esc_chars[i] = "\\x";
-            esc_chars[i] += hex[i >> 4];
-            esc_chars[i] += hex[i & 0xf];
-        }
-    }
-
-    esc_chars[':'] = "\\:";
-    esc_chars['\n'] = "\\n";
-    esc_chars['\t'] = "\\t";
-    esc_chars['\r'] = "\\r";
-    esc_chars['\\'] = "\\\\";
-    esc_chars['\\'] = "\\\\";
-    esc_chars['{'] = "\\{";
-    esc_chars['}'] = "\\}";
-    esc_chars['#'] = "\\#";
-}
-
-std::string escape(const std::string &s, bool spaces) {
-    std::string rv;
-
-    for (char c: s) {
-        if (spaces && c == ' ') {
-            rv += "\\ ";
-            continue;
-        }
-        rv += esc_chars[(unsigned char )c];
-    }
-    return rv;
-}
-
-std::string unescape(const std::string &s) {
-    std::string rv;
-    for (size_t i = 0; i < s.size(); ++i) {
-        if (s[i] == '\\') {
-            if (i == s.size() - 1) RAISE_ERROR("unescape failed");
-            switch (s[i + 1]) {
-                case 'n':
-                    i += 1; rv += "\n";
-                    break;
-                case 't':
-                    i += 1; rv += "\t";
-                    break;
-                case 'r':
-                    i += 1; rv += "\r";
-                    break;
-                case '\\':
-                    i += 1; rv += "\\";
-                    break;
-                case 'x':
-                    if (i + 3 >= s.size()) RAISE_ERROR("unescape failed");;
-                    rv += (char)( (hex2int(s[i + 2]) << 4) + hex2int(s[i + 3]));
-                    i+=3;
-                    break;
-                default:
-                    rv += s[i + 1]; i++;
-                    break;
-            }
-
-        } else {
-            rv += s[i];
-        }
-    }
-    return rv;
-}
 
 std::string base26encode(uint32_t n, int align) {
     static const char *abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -161,6 +87,8 @@ void Escaper::escchar(char c, char *out) {
         case '\r': out[0] = '\\'; out[1] = 'r'; out[2] = 0; return;
         case '\t': out[0] = '\\'; out[1] = 't'; out[2] = 0; return;
         case '\\': out[0] = '\\'; out[1] = '\\'; out[2] = 0; return;
+        case '{': out[0] = '\\'; out[1] = '{'; out[2] = 0; return;
+        case '}': out[0] = '\\'; out[1] = '}'; out[2] = 0; return;
     }
 
     if (config.spaces && c == ' ') {
@@ -174,7 +102,6 @@ void Escaper::escchar(char c, char *out) {
     if (config.quotes2 && c == '\"') {
         out[0] = '\\'; out[1] = '\"'; out[2] = 0; return;
     }
-
 
     if (!isprint(c)) {
         unsigned char i = c;
@@ -193,15 +120,61 @@ void Escaper::escchar(char c, char *out) {
 
 std::string Escaper::escape(const std::string &s) {
     std::string rv;
+    bool q = false;
+
+    if (!config.spaces && std::find_if(s.begin(), s.end(), isspace) != s.end()) {
+        q = true;
+    }
+
+    if (q) rv = "'";
     char buf[8];
     memset(buf, 0, sizeof(buf));
     for (char c: s) {
         escchar(c, buf);
         rv += buf;
     }
+    if (q) rv += "'";
+
     return rv;
 }
 
+std::string Escaper::unescape(const std::string &s) {
+    std::string rv;
+    size_t i = 0;
+    size_t size = s.size();
 
+    for (; i < size; ++i) {
+        if (s[i] == '\\') {
+            if (i == s.size() - 1) RAISE_ERROR("unescape failed");
+            switch (s[i + 1]) {
+                case 'n':
+                    i += 1; rv += "\n";
+                    break;
+                case 't':
+                    i += 1; rv += "\t";
+                    break;
+                case 'r':
+                    i += 1; rv += "\r";
+                    break;
+                case '\\':
+                    i += 1; rv += "\\";
+                    break;
+                case 'x':
+                    if (i + 3 >= s.size()) RAISE_ERROR("unescape failed");;
+                    rv += (char)( (hex2int(s[i + 2]) << 4) + hex2int(s[i + 3]));
+                    i+=3;
+                    break;
+                default:
+                    rv += s[i + 1]; i++;
+                    break;
+            }
+
+        } else {
+            rv += s[i];
+        }
+    }
+    return rv;
+
+}
 
 } // namespace s28
