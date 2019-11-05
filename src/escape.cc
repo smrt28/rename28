@@ -11,7 +11,8 @@
 
 
 #include "error.h"
-
+#include "escape.h"
+#include "string.h"
 namespace s28 {
 
 namespace {
@@ -151,5 +152,56 @@ std::string str_align(const std::string s, size_t len) {
 
     return rv;
 }
+
+
+void Escaper::escchar(char c, char *out) {
+    static const char *hex = "0123456789ABCDEF";
+    switch(c) {
+        case '\n': out[0] = '\\'; out[1] = 'n'; out[2] = 0; return;
+        case '\r': out[0] = '\\'; out[1] = 'r'; out[2] = 0; return;
+        case '\t': out[0] = '\\'; out[1] = 't'; out[2] = 0; return;
+        case '\\': out[0] = '\\'; out[1] = '\\'; out[2] = 0; return;
+    }
+
+    if (config.spaces && c == ' ') {
+        out[0] = '\\'; out[1] = ' '; out[2] = 0; return;
+    }
+
+    if (config.quotes1 && c == '\'') {
+        out[0] = '\\'; out[1] = '\''; out[2] = 0; return;
+    }
+
+    if (config.quotes2 && c == '\"') {
+        out[0] = '\\'; out[1] = '\"'; out[2] = 0; return;
+    }
+
+
+    if (!isprint(c)) {
+        unsigned char i = c;
+        out[0] = '\\';
+        out[1] = 'x';
+        out[2] += hex[i >> 4];
+        out[3] += hex[i & 0xf];
+        out[4] = 0;
+        return;
+    }
+
+    out[0] = c;
+    out[1] = 0;
+}
+
+
+std::string Escaper::escape(const std::string &s) {
+    std::string rv;
+    char buf[8];
+    memset(buf, 0, sizeof(buf));
+    for (char c: s) {
+        escchar(c, buf);
+        rv += buf;
+    }
+    return rv;
+}
+
+
 
 } // namespace s28

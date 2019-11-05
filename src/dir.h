@@ -24,7 +24,7 @@ public:
     Node * get_parent() { return parent; }
     std::string get_name() const override { return name; }
 
-    const Children & get_children() { return children; }
+    const Children & get_children() const { return children; }
 
 
 private:

@@ -186,10 +186,25 @@ int main() {
         auto * node = rec->node;
 
         if (node->is<s28::Dir>()) {
-            std::cout << tabs(dep) << s28::escape(node->get_name()) << " {";
-            dep += 1;
+            const s28::Dir *dir = dynamic_cast<const s28::Dir *>(node);
+            if (dir->get_children().empty()) {
+                std::cout << tabs(dep) << s28::escape(node->get_name()) << " {}";
+            } else {
+                std::cout << tabs(dep) << s28::escape(node->get_name()) << " {";
+                dep += 1;
+            }
         } else {
-            std::cout << tabs(dep) << s28::escape(node->get_name());
+            std::cout << tabs(dep) << s28::escape(node->get_name()) << " #" << rec->inode;
+            auto d = rec->repre;
+            if (d) {
+                while(d) {
+                    if (d->inode != rec->inode) {
+                        std::cout << "|" << d->inode;
+                    }
+                    d = d->next;
+                }
+                std::cout << " !Dup";
+            }
         }
 
         std::cout << std::endl;

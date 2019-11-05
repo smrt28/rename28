@@ -42,5 +42,6 @@ AC_LANG_WERROR
 
 
 AC_CONFIG_HEADER(config.h)
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile
+                 gtest/Makefile])
 AC_OUTPUT

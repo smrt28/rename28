@@ -5,6 +5,25 @@
 
 namespace s28 {
 
+class Escaper {
+public:
+    class Config {
+    public:
+        bool quotes1 = true;
+        bool quotes2 = true;
+        bool spaces = true;
+    };
+
+    Escaper(const Config &config) : config(config) {}
+
+    std::string escape(const std::string &);
+    std::string unescape(const std::string &);
+
+private:
+    void escchar(char c, char *out);
+    const Config config;
+};
+
 void init_escaping();
 
 std::string escape(const std::string &s, bool spaces = true);
