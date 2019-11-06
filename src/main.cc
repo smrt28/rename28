@@ -213,56 +213,113 @@ std::string number(parser::Parslet &p) {
 
 class RenameParser {
 public:
+    typedef std::pair<std::string, std::string> RenameRecord;
+    typedef std::map<ino_t, s28::collector::BaseRecord *> InodeMap;
+    std::vector<RenameRecord> renames;
+
+
+    RenameParser(InodeMap &inomap) :
+        inomap(inomap)
+    {}
+
+private:
+    int saves = 0;
+    InodeMap &inomap;
+
+    ino_t read_inode(parser::Parslet &p) {
+        ino_t ino = 0;
+        for(;;) {
+            while(isdigit(*p)) {
+                if (ino) {
+                    parser::number(p);
+                } else {
+                    ino = boost::lexical_cast<ino_t>(parser::number(p));
+                }
+            }
+            if (*p != '|') break;
+            p.skip();
+        }
+        return ino;
+    }
+
+    void read_inodes(parser::Parslet &p, ino_t &firstino, std::set<ino_t> &inodes) {
+        firstino = 0;
+        for(;;) {
+            while(isdigit(*p)) {
+                ino_t ino = boost::lexical_cast<ino_t>(parser::number(p));
+                if (!firstino) firstino = ino;
+                inodes.insert(ino);
+            }
+            if (*p != '|') break;
+            p.skip();
+        }
+    }
+
     void read_dir_content(parser::Parslet &p, const std::string &prefix) {
         for (;;) {
             parser::ltrim(p);
+            if (p.empty()) return;
             if (*p == '}') {
                 p.skip();
                 return;
             }
             std::string filename = read_escaped_string(p);
-            std::string path = prefix + "/" + filename;
-            //        std::cout << "[" << prefix << "/" << filename << "]" << std::endl;
+            std::string path;
+            if (prefix.empty()) {
+                path = filename;
+            } else {
+                path = prefix + "/" + filename;
+            }
             parser::ltrim(p);
-            if (*p == '{') {
-                p.skip();
-                read_dir_content(p, prefix + "/" + filename);
-            }
-            if (*p == '}') {
-                p.skip();
-                return;
-            }
-            if (*p == '#') {
-                p.skip();
-                for(;;) {
-                    std::set<ino_t> inodes;
-                    while(isdigit(*p)) {
-                        inodes.insert(boost::lexical_cast<ino_t>(parser::number(p)));
-                    }
-                    if (*p != '|') break;
+            switch(*p) {
+                case '{': {
                     p.skip();
+                    read_dir_content(p, path);
+                    break;
                 }
+                case '}': {
+                    p.skip();
+                    return;
+                }
+                case '#': {
+                    p.skip();
+                    std::set<ino_t> inodes;
+                    ino_t firstino = 0;
+                    read_inodes(p, firstino, inodes);
 
+                    if (!inodes.empty()) {
+                        ino_t ino = *inodes.begin();
+                        if (ino != firstino) saves++;
+                        auto it = inomap.find(ino);
+                        if (it != inomap.end()) {
+                            renames.push_back(std::make_pair(path, it->second->node->get_path()));
+                            std::cout << "[" << path << "] <- [" << it->second->node->get_path() << "] #" << ino << std::endl;
+                        }
+                    }
 
-
-                while (*p != '\n') p.skip();
+                    while (*p != '\n') p.skip();
+                    break;
+                }
             }
         }
     }
-
+public:
     void parse(const std::string &inputfile) {
+        saves = 0;
         std::ifstream is (inputfile, std::ifstream::binary);
         std::string str((std::istreambuf_iterator<char>(is)),
                 std::istreambuf_iterator<char>());
 
-
         parser::Parslet p(str);
+        read_dir_content(p, "");
+        /*
         std::string filename = read_escaped_string(p);
         parser::ltrim(p);
         if (*p == '{') {
             p.skip();
             read_dir_content(p, filename);
-        }
+        }*/
+        std::cerr << "dedups: " << saves << std::endl;
     }
 
 };
@@ -293,13 +350,12 @@ int main() {
     s28::Progress progress;
     s28::collector::stat(records, progress);
 
-    std::map<ino_t, s28::collector::BaseRecord *> inomap;
+    s28::RenameParser::InodeMap inomap;
     for (auto &r: records) {
-        std::cout << r->node->get_path() << std::endl;
         inomap[r->inode] = r.get();
     }
 
-    s28::RenameParser rp;
+    s28::RenameParser rp(inomap);
     rp.parse("a");
 
     return 0;
