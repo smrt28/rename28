@@ -7,20 +7,11 @@ namespace s28 {
 
 class Escaper {
 public:
-    class Config {
-    public:
-        bool quote = true;
-        bool spaces = false;
-    };
-
-    Escaper(const Config &config) : config(config) {}
-
     std::string escape(const std::string &);
     std::string unescape(const std::string &);
 
 private:
-    void escchar(char c, char *out);
-    const Config config;
+    void escchar(char c, char *out, bool qu);
 };
 
 std::string base26encode(uint32_t, int align = 1);

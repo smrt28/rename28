@@ -15,9 +15,11 @@
 #include <vector>
 #include <memory>
 #include <sstream>
+#include <fstream>
+
 #include <openssl/sha.h>
 #include <boost/algorithm/string/join.hpp>
-
+#include <boost/lexical_cast.hpp>
 #include <boost/bind.hpp>
 
 #include "node.h"
@@ -27,7 +29,7 @@
 #include "error.h"
 #include "hash.h"
 #include "file.h"
-
+#include "parser.h"
 
 namespace s28 {
 
@@ -66,17 +68,22 @@ void walk(const Node *node, CB cb) {
 
 namespace collector {
 
-class Record : public boost::noncopyable {
+class BaseRecord : public boost::noncopyable {
+    public:
+        const Node *node = nullptr;
+        ino_t inode = 0;
+        int brackets = 0;
+};
+
+class Record : public BaseRecord  {
 public:
     std::string hash;
-    const Node *node = nullptr;
     Record *repre = nullptr;
     Record *next = nullptr;
-    ino_t inode = 0;
-    int brackets = 0;
 };
 
 typedef std::vector<std::unique_ptr<Record>> Records;
+typedef std::vector<std::unique_ptr<BaseRecord>> BaseRecords;
 
 
 void find(const Node *n, Records &records) {
@@ -85,7 +92,9 @@ void find(const Node *n, Records &records) {
     records.push_back(std::move(rec));
 }
 
-void stat(Records &records, Progress &progress) {
+
+template<typename RECORDS>
+void stat(RECORDS &records, Progress &progress) {
     size_t cnt = 0;
     for (auto &rec: records) {
         progress.tick(++cnt, records.size());
@@ -134,11 +143,14 @@ void group_duplicates(Records &records, Progress &progress) {
 }
 
 
-class RecordsBuilder : public Traverse {
+template<typename REC>
+class RecordsBuilderImpl : public Traverse {
 public:
-    RecordsBuilder(Records &records) : records(records) {}
+    typedef std::vector<std::unique_ptr<REC>> Records;
+
+    RecordsBuilderImpl(Records &records) : records(records) {}
     void walk(const Node *node) override {
-        std::unique_ptr<Record> rec(new Record());
+        std::unique_ptr<REC> rec(new REC());
         rec->node = node;
         records.push_back(std::move(rec));
     }
@@ -151,7 +163,109 @@ private:
     Records &records;
 };
 
+
+typedef RecordsBuilderImpl<Record> RecordsBuilder;
+typedef RecordsBuilderImpl<BaseRecord> BaseRecordsBuilder;
+
 }
+
+std::string read_escaped_string(parser::Parslet &p) {
+    parser::ltrim(p);
+    parser::Parslet orig = p;
+
+    if (*p == '\'') {
+        p.skip();
+        while (*p != '\'') {
+            if (p.next() == '\\') {
+                if (p.next() == 'x') {
+                    p.skip();
+                }
+                p.skip();
+                continue;
+            }
+        }
+        p.skip();
+    } else {
+        while (!isspace(*p)) {
+            if (p.next() == '\\') {
+                if (p.next() == 'x') {
+                    p.skip();
+                }
+                p.skip();
+                continue;
+            }
+        }
+    }
+    Escaper es;
+    return es.unescape(parser::Parslet(orig.begin(), p.begin()).str());
+}
+
+
+namespace parser {
+std::string number(parser::Parslet &p) {
+    std::string n;
+    while (isdigit(*p)) {
+        n += p.next();
+    }
+    return n;
+}
+}
+
+class RenameParser {
+public:
+    void read_dir_content(parser::Parslet &p, const std::string &prefix) {
+        for (;;) {
+            parser::ltrim(p);
+            if (*p == '}') {
+                p.skip();
+                return;
+            }
+            std::string filename = read_escaped_string(p);
+            std::string path = prefix + "/" + filename;
+            //        std::cout << "[" << prefix << "/" << filename << "]" << std::endl;
+            parser::ltrim(p);
+            if (*p == '{') {
+                p.skip();
+                read_dir_content(p, prefix + "/" + filename);
+            }
+            if (*p == '}') {
+                p.skip();
+                return;
+            }
+            if (*p == '#') {
+                p.skip();
+                for(;;) {
+                    std::set<ino_t> inodes;
+                    while(isdigit(*p)) {
+                        inodes.insert(boost::lexical_cast<ino_t>(parser::number(p)));
+                    }
+                    if (*p != '|') break;
+                    p.skip();
+                }
+
+
+
+                while (*p != '\n') p.skip();
+            }
+        }
+    }
+
+    void parse(const std::string &inputfile) {
+        std::ifstream is (inputfile, std::ifstream::binary);
+        std::string str((std::istreambuf_iterator<char>(is)),
+                std::istreambuf_iterator<char>());
+
+
+        parser::Parslet p(str);
+        std::string filename = read_escaped_string(p);
+        parser::ltrim(p);
+        if (*p == '{') {
+            p.skip();
+            read_dir_content(p, filename);
+        }
+    }
+
+};
 
 } // namespace s28
 
@@ -166,6 +280,30 @@ std::string tabs(int n) {
 }
 
 int main() {
+#if 1
+    s28::Node::Config config;
+    s28::Dir d(config, ".", nullptr);
+    d.build(config);
+
+    s28::collector::BaseRecords records;
+    s28::collector::BaseRecordsBuilder rb(records);
+    d.traverse(rb);
+
+
+    s28::Progress progress;
+    s28::collector::stat(records, progress);
+
+    std::map<ino_t, s28::collector::BaseRecord *> inomap;
+    for (auto &r: records) {
+        std::cout << r->node->get_path() << std::endl;
+        inomap[r->inode] = r.get();
+    }
+
+    s28::RenameParser rp;
+    rp.parse("a");
+
+    return 0;
+#else
     s28::Node::Config config;
     s28::Dir d(config, ".", nullptr);
     d.build(config);
@@ -179,8 +317,7 @@ int main() {
     s28::collector::hash(records, progress);
     s28::collector::group_duplicates(records, progress);
 
-    s28::Escaper::Config escconfig;
-    s28::Escaper es(escconfig);
+    s28::Escaper es;
 
 
     int dep = 0;
@@ -217,5 +354,6 @@ int main() {
         }
     }
     return 0;
+#endif
 }
 

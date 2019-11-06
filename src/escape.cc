@@ -80,22 +80,25 @@ std::string str_align(const std::string s, size_t len) {
 }
 
 
-void Escaper::escchar(char c, char *out) {
+void Escaper::escchar(char c, char *out, bool qu) {
     static const char *hex = "0123456789ABCDEF";
     switch(c) {
         case '\n': out[0] = '\\'; out[1] = 'n'; out[2] = 0; return;
         case '\r': out[0] = '\\'; out[1] = 'r'; out[2] = 0; return;
         case '\t': out[0] = '\\'; out[1] = 't'; out[2] = 0; return;
         case '\\': out[0] = '\\'; out[1] = '\\'; out[2] = 0; return;
-        case '{': out[0] = '\\'; out[1] = '{'; out[2] = 0; return;
-        case '}': out[0] = '\\'; out[1] = '}'; out[2] = 0; return;
     }
 
-    if (config.spaces && c == ' ') {
-        out[0] = '\\'; out[1] = ' '; out[2] = 0; return;
+    if (!qu) {
+        switch(c) {
+            case '{': out[0] = '\\'; out[1] = '{'; out[2] = 0; return;
+            case '}': out[0] = '\\'; out[1] = '}'; out[2] = 0; return;
+            case ' ': out[0] = '\\'; out[1] = ' '; out[2] = 0; return;
+            case '#': out[0] = '\\'; out[1] = '#'; out[2] = 0; return;
+        }
     }
 
-    if (config.quote && c == '\'') {
+    if (c == '\'') {
         out[0] = '\\'; out[1] = '\''; out[2] = 0; return;
     }
 
@@ -118,7 +121,7 @@ std::string Escaper::escape(const std::string &s) {
     std::string rv;
     bool q = false;
 
-    if (!config.spaces && std::find_if(s.begin(), s.end(), isspace) != s.end()) {
+    if (std::find_if(s.begin(), s.end(), isspace) != s.end()) {
         q = true;
     }
 
@@ -126,7 +129,7 @@ std::string Escaper::escape(const std::string &s) {
     char buf[8];
     memset(buf, 0, sizeof(buf));
     for (char c: s) {
-        escchar(c, buf);
+        escchar(c, buf, q);
         rv += buf;
     }
     if (q) rv += "'";
@@ -139,7 +142,7 @@ std::string Escaper::unescape(const std::string &s) {
     size_t i = 0;
     size_t size = s.size();
 
-    if (config.quote && s.size() >= 2 && s[0] == '\'' && s[size - 1] == '\'') {
+    if (s.size() >= 2 && s[0] == '\'' && s[size - 1] == '\'') {
         i++; size--;
     }
 

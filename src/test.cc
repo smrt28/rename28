@@ -11,22 +11,18 @@ bool check(s28::Escaper &es, const std::string &s) {
 TEST(Dummy, Escape) {
     using namespace s28;
 
-    Escaper::Config escconfig;
-    Escaper es(escconfig);
+    Escaper es;
 
-    try {
-        EXPECT_TRUE(check(es, "asb\xF1" "1\"  g"));
-        EXPECT_TRUE(check(es, ""));
-        EXPECT_TRUE(check(es, "a"));
-        EXPECT_TRUE(check(es, "{a}"));
-        EXPECT_TRUE(check(es, "''"));
-        EXPECT_TRUE(check(es, "''c'''"));
-        EXPECT_TRUE(check(es, "ab"));
-        EXPECT_TRUE(check(es, "abc"));
-        EXPECT_TRUE(check(es, "\t\r\n \"\'"));
-        EXPECT_TRUE(check(es, "\t\r\n \\xFF\\xF0\"\'"));
-    } catch (const std::exception &e) {
-        std::cout << e.what() << std::endl;
-    }
+    EXPECT_TRUE(check(es, "asb\xF1" "1\"  g"));
+    EXPECT_TRUE(check(es, ""));
+    EXPECT_TRUE(check(es, "a"));
+    EXPECT_TRUE(check(es, "{a}"));
+    EXPECT_TRUE(check(es, "''"));
+    EXPECT_TRUE(check(es, "''c'''"));
+    EXPECT_TRUE(check(es, "ab"));
+    EXPECT_TRUE(check(es, "abc"));
+    EXPECT_TRUE(check(es, "aasfg'as\\dgagagdasg   # ASDFASDF#ASDFbc"));
+    EXPECT_TRUE(check(es, "\t\r\n \"\'"));
+    EXPECT_TRUE(check(es, "\t\r\n \\xFF\\xF0\"\'"));
 }
 
