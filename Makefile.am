@@ -14,7 +14,8 @@ rename28_SOURCES = \
 	src/main.cc src/escape.cc \
 	src/escape.h src/error.h \
 	src/hash.cc src/dir.cc \
-	src/file.cc src/utils.cc
+	src/file.cc src/utils.cc \
+	src/rename_parser.cc
 
 rename28_CPPFLAGS = -Wall @REMOVE28_CFLAGS@
 rename28_LDFLAGS = @REMOVE28_LIBS@

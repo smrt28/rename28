@@ -163,7 +163,7 @@ inline void trim(Parslet &p) {
     rtrim(p);
 }
 
-std::string number(parser::Parslet &p) {
+inline std::string number(parser::Parslet &p) {
     std::string n;
     while (isdigit(*p)) {
         n += p.next();
@@ -180,7 +180,6 @@ inline std::string qu(Parslet &p) {
             return rv;
         }
 
-
         if (*p == '\\') {
             rv += p.at(1);
             p += 2;
@@ -189,6 +188,19 @@ inline std::string qu(Parslet &p) {
 
         rv += p++;
     }
+}
+
+inline int cound_lines(Parslet &p, const char *offset) {
+    if (offset < p.begin() || offset >= p.end())
+        throw Error(Error::RANGE);
+
+    int rv = 0;
+
+    const char *it = p.begin();
+    for (;offset >= it; --offset) {
+        if (*offset == '\n') rv++;
+    }
+    return rv;
 }
 
 inline Parslet split(Parslet &p, char c) {
