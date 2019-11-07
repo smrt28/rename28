@@ -21,6 +21,7 @@
 #include <boost/algorithm/string/join.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/bind.hpp>
+#include <boost/program_options.hpp>
 
 #include "node.h"
 #include "dir.h"
@@ -171,37 +172,16 @@ std::string tabs(int n) {
     return rv;
 }
 
-int main() {
-#if 1
+
+
+int search_rename_repo() {
     s28::Node::Config config;
-    s28::Dir d(config, ".", nullptr);
-    d.build(config);
-
-    s28::collector::BaseRecords records;
-    s28::collector::BaseRecordsBuilder rb(records);
-    d.traverse(rb);
-
-
-    s28::Progress progress;
-    s28::collector::stat(records, progress);
-
-    s28::RenameParser::InodeMap inomap;
-    for (auto &r: records) {
-        inomap[r->inode] = r.get();
-    }
-
-    s28::RenameParser rp(inomap);
-    rp.parse("a");
-
-    return 0;
-#else
-    s28::Node::Config config;
-    s28::Dir d(config, ".", nullptr);
+    s28::Dir d(config, ".renameRepo", nullptr);
     d.build(config);
 
     s28::collector::Records records;
     s28::collector::RecordsBuilder rb(records);
-    d.traverse(rb);
+    d.traverse_children(rb);
 
     s28::Progress progress;
     s28::collector::stat(records, progress);
@@ -209,7 +189,6 @@ int main() {
     s28::collector::group_duplicates(records, progress);
 
     s28::Escaper es;
-
 
     int dep = 0;
     for (auto &rec: records) {
@@ -245,6 +224,59 @@ int main() {
         }
     }
     return 0;
-#endif
 }
 
+int apply_rename() {
+    s28::Node::Config config;
+    s28::Dir d(config, ".renameRepo", nullptr);
+    d.build(config);
+
+    s28::collector::BaseRecords records;
+    s28::collector::BaseRecordsBuilder rb(records);
+    d.traverse(rb);
+
+
+    s28::Progress progress;
+    s28::collector::stat(records, progress);
+
+    s28::RenameParser::InodeMap inomap;
+    for (auto &r: records) {
+        inomap[r->inode] = r.get();
+    }
+
+    s28::RenameParser rp(inomap);
+    rp.parse("a");
+
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    using namespace boost::program_options;
+    options_description desc{"Options"};
+    desc.add_options()
+        ("help,h", "Help screen")
+        ("init,i", "initialize repo")
+        ("apply,a", "apply .rename")
+        ;
+
+    variables_map vm;
+    store(parse_command_line(argc, argv, desc), vm);
+    notify(vm);
+
+    if (vm.count("help")) {
+        std::cout << desc << std::endl;
+        return 0;
+
+    }
+
+    if (vm.count("init")) {
+        search_rename_repo();
+        return 0;
+    }
+
+    if (vm.count("apply")) {
+        apply_rename();
+        return 0;
+
+    }
+}

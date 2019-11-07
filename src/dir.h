@@ -20,6 +20,7 @@ public:
     virtual std::string get_path() const override;
     void build(Config &) override;
     void traverse(Traverse &t) const override;
+    void traverse_children(Traverse &t) const;
 
     Node * get_parent() { return parent; }
     std::string get_name() const override { return name; }

@@ -30,6 +30,13 @@ void Dir::traverse(Traverse &t) const {
     t.on_dir_end(this);
 }
 
+void Dir::traverse_children(Traverse &t) const {
+    if (children.empty()) return;
+    for (size_t i = 0; i < children.size(); ++i) {
+        children[i]->traverse(t);
+    }
+}
+
 
 void Dir::build(Config &config) {
     DIR *dp = nullptr;
@@ -65,7 +72,7 @@ void Dir::build(Config &config) {
 }
 
 std::string Dir::get_path() const {
-    if (!parent) return "./";
+    if (!parent) return name + "/";
     return parent->get_path() + name + "/";
 }
 

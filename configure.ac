@@ -33,6 +33,14 @@ AC_ARG_ENABLE(optimizations,
 [optimizations=false])
 
 
+# check for boost program options
+AC_LANG_CPLUSPLUS
+AC_CHECK_HEADER([boost/program_options.hpp], [], AC_MSG_ERROR([boost program_options missing], 1))
+AC_CHECK_LIB(boost_program_options-mt, main, , [ 
+    AC_CHECK_LIB(boost_program_options, main, , [ 
+        AC_MSG_ERROR([boost program_options library missing], 1)])])
+
+
 
 #libcrypto
 

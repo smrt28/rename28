@@ -53,10 +53,7 @@ ino_t RenameParser::read_inodes(parser::Parslet &p, std::set<ino_t> *inodes) {
             if (!firstino) {
                 firstino = ino;
             }
-            //else
-            {
-                if (inodes) inodes->insert(ino);
-            }
+            if (inodes) inodes->insert(ino);
         }
         if (*p != '|') break;
         p.skip();
@@ -66,7 +63,7 @@ ino_t RenameParser::read_inodes(parser::Parslet &p, std::set<ino_t> *inodes) {
 
 
 bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefix) {
-    if (*p == '}') return false;
+    if (p.empty() || *p == '}') return false;
 
     std::string filename = read_escaped_string(p);
     utils::sanitize_filename(filename);
@@ -93,9 +90,8 @@ void RenameParser::read_dir_content(parser::Parslet &p, const std::string &prefi
     while(read_file_or_dir(p, prefix)) {
         parser::ltrim(p);
     }
-
-    parser::ltrim(p);
 }
+
 
 void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix) {
     p.expect_char('{');
@@ -107,7 +103,8 @@ void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix) {
 void RenameParser::read_file(parser::Parslet &p, const std::string &path) {
     p.expect_char('#');
     std::set<ino_t> inodes;
-    ino_t self = read_inodes(p, &inodes);
+
+    read_inodes(p, &inodes);
 
     bool found = false;
     for (ino_t ino : inodes) {
@@ -124,7 +121,7 @@ void RenameParser::read_file(parser::Parslet &p, const std::string &path) {
         }
     }
     if (!found) {
-        std::cerr << "err: " << path << "; missing" << std::endl;
+        std::cerr << "err: " << path << "; is missing" << std::endl;
     }
     saves += inomap.size() - 1;
     while (*p != '\n') p.skip();
@@ -138,7 +135,7 @@ void RenameParser::parse(const std::string &inputfile) {
             std::istreambuf_iterator<char>());
 
     parser::Parslet p(str);
-    read_dir(p, "");
+    read_dir_content(p, "");
 }
 
 
