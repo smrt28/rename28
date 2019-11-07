@@ -163,6 +163,14 @@ inline void trim(Parslet &p) {
     rtrim(p);
 }
 
+std::string number(parser::Parslet &p) {
+    std::string n;
+    while (isdigit(*p)) {
+        n += p.next();
+    }
+    return n;
+}
+
 inline std::string qu(Parslet &p) {
     p.expect_char('"');
     std::string rv;

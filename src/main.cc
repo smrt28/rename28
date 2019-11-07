@@ -201,16 +201,6 @@ std::string read_escaped_string(parser::Parslet &p) {
 }
 
 
-namespace parser {
-std::string number(parser::Parslet &p) {
-    std::string n;
-    while (isdigit(*p)) {
-        n += p.next();
-    }
-    return n;
-}
-}
-
 class RenameParser {
 public:
     typedef std::pair<std::string, std::string> RenameRecord;
@@ -255,54 +245,65 @@ private:
         }
     }
 
+
+    bool read_file_or_dir(parser::Parslet &p, const std::string &prefix) {
+        if (*p == '}') return false;
+
+        std::string filename = read_escaped_string(p);
+//      utils::sanitize_filename(fname);
+        std::string path;
+        if (prefix.empty()) {
+            path = filename;
+        } else {
+            path = prefix + "/" + filename;
+        }
+        parser::ltrim(p);
+        switch(*p) {
+            case '{':
+                read_dir(p, path);
+                return true;
+            case '#':
+                read_file(p, path);
+                return true;
+        }
+        RAISE_ERROR("expected file or dir");
+    }
+
     void read_dir_content(parser::Parslet &p, const std::string &prefix) {
-        for (;;) {
+        parser::ltrim(p);
+        while(read_file_or_dir(p, prefix)) {
             parser::ltrim(p);
-            if (p.empty()) return;
-            if (*p == '}') {
-                p.skip();
-                return;
-            }
-            std::string filename = read_escaped_string(p);
-            std::string path;
-            if (prefix.empty()) {
-                path = filename;
-            } else {
-                path = prefix + "/" + filename;
-            }
-            parser::ltrim(p);
-            switch(*p) {
-                case '{': {
-                    p.skip();
-                    read_dir_content(p, path);
-                    break;
-                }
-                case '}': {
-                    p.skip();
-                    return;
-                }
-                case '#': {
-                    p.skip();
-                    std::set<ino_t> inodes;
-                    ino_t firstino = 0;
-                    read_inodes(p, firstino, inodes);
+        }
 
-                    if (!inodes.empty()) {
-                        ino_t ino = *inodes.begin();
-                        if (ino != firstino) saves++;
-                        auto it = inomap.find(ino);
-                        if (it != inomap.end()) {
-                            renames.push_back(std::make_pair(path, it->second->node->get_path()));
-                            std::cout << "[" << path << "] <- [" << it->second->node->get_path() << "] #" << ino << std::endl;
-                        }
-                    }
+        parser::ltrim(p);
+    }
 
-                    while (*p != '\n') p.skip();
-                    break;
-                }
+    void read_dir(parser::Parslet &p, const std::string &prefix) {
+        p.expect_char('{');
+        read_dir_content(p, prefix);
+        p.expect_char('}');
+    }
+
+
+    void read_file(parser::Parslet &p, const std::string &path) {
+        p.expect_char('#');
+        std::set<ino_t> inodes;
+        ino_t firstino = 0;
+        read_inodes(p, firstino, inodes);
+
+        if (!inodes.empty()) {
+            ino_t ino = *inodes.begin();
+            if (ino != firstino) saves++;
+            auto it = inomap.find(ino);
+            if (it != inomap.end()) {
+                renames.push_back(std::make_pair(path, it->second->node->get_path()));
+                std::cout << "[" << path << "] <- [" << it->second->node->get_path() << "] #" << ino << std::endl;
             }
         }
+        while (*p != '\n') p.skip();
     }
+
+
 public:
     void parse(const std::string &inputfile) {
         saves = 0;
@@ -311,17 +312,8 @@ public:
                 std::istreambuf_iterator<char>());
 
         parser::Parslet p(str);
-        read_dir_content(p, "");
-        /*
-        std::string filename = read_escaped_string(p);
-        parser::ltrim(p);
-        if (*p == '{') {
-            p.skip();
-            read_dir_content(p, filename);
-        }*/
-        std::cerr << "dedups: " << saves << std::endl;
+        read_dir(p, "");
     }
-
 };
 
 } // namespace s28
