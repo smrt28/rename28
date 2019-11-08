@@ -95,6 +95,7 @@ void Escaper::escchar(char c, char *out, bool qu) {
             case '}': out[0] = '\\'; out[1] = '}'; out[2] = 0; return;
             case ' ': out[0] = '\\'; out[1] = ' '; out[2] = 0; return;
             case '#': out[0] = '\\'; out[1] = '#'; out[2] = 0; return;
+            case '$': out[0] = '\\'; out[1] = '$'; out[2] = 0; return;
         }
     }
 
