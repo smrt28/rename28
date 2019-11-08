@@ -30,6 +30,8 @@ class Parslet {
 public:
     static const int eof = -1;
 
+    Parslet() : it(nullptr), eit(nullptr) {}
+
     Parslet(const char *it, const char *eit) :
         it(it), eit(eit)
     {}
@@ -70,7 +72,7 @@ public:
     }
 
     int next() {
-        if (it >= eit) return eof;
+        if (it >= eit) raise(Error::RANGE);
         int rv = *it;
         ++it;
         return (unsigned char)rv;

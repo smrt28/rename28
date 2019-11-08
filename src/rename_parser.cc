@@ -62,46 +62,85 @@ ino_t RenameParser::read_inodes(parser::Parslet &p, std::set<ino_t> *inodes) {
 }
 
 
-bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefix) {
-    if (p.empty() || *p == '}') return false;
+void RenameParser::update_context(parser::Parslet &p, Context &ctx) {
+   p.expect_char('$');
+   const char *it = p.begin();
+   parser::Parslet command;
+   for (;;) {
+       p++;
+       if (*p == '\n') {
+           command = parser::Parslet(it, p.begin());
+           break;
+       }
+   }
 
+   parser::trim(command);
+
+   if (command.str() == "numbers") {
+       ctx.numbername = 0;
+   }
+
+   if (command.str() == "flatten") {
+       std::cerr << "flat" << std::endl;
+      ctx.flatten = true;
+   }
+}
+
+bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefix, Context &ctx) {
+    if (p.empty() || *p == '}') return false;
+    if (*p == '$') {
+        update_context(p, ctx);
+        return true;
+    }
     std::string filename = read_escaped_string(p);
     utils::sanitize_filename(filename);
     std::string path;
+    parser::ltrim(p);
+    if (ctx.numbername != -1 && *p == '#') {
+        filename = std::to_string(ctx.numbername);
+        ctx.numbername++;
+    }
     if (prefix.empty()) {
         path = filename;
     } else {
         path = prefix + "/" + filename;
     }
-    parser::ltrim(p);
     switch(*p) {
         case '{':
-            read_dir(p, path);
+            if (ctx.flatten) {
+                read_dir(p, prefix, ctx);
+            } else {
+                read_dir(p, path, ctx);
+            }
             return true;
         case '#':
-            read_file(p, path);
+
+            read_file(p, path, ctx);
             return true;
+
     }
     RAISE_ERROR("expected file or dir");
 }
 
-void RenameParser::read_dir_content(parser::Parslet &p, const std::string &prefix) {
+void RenameParser::read_dir_content(parser::Parslet &p, const std::string &prefix, Context &ctx) {
     parser::ltrim(p);
-    while(read_file_or_dir(p, prefix)) {
+    while(read_file_or_dir(p, prefix, ctx)) {
         parser::ltrim(p);
     }
 }
 
 
-void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix) {
+void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix, Context &ctx) {
+    Context newctx;
+    ctx.inherit(newctx);
     p.expect_char('{');
     renames.push_back(std::make_pair("", prefix));
-    read_dir_content(p, prefix);
+    read_dir_content(p, prefix, newctx);
     p.expect_char('}');
 }
 
 
-void RenameParser::read_file(parser::Parslet &p, const std::string &path) {
+void RenameParser::read_file(parser::Parslet &p, const std::string &path, Context &ctx) {
     p.expect_char('#');
     std::set<ino_t> inodes;
 
@@ -145,7 +184,8 @@ void RenameParser::parse(const std::string &inputfile) {
             std::istreambuf_iterator<char>());
 
     parser::Parslet p(str);
-    read_dir_content(p, "");
+    Context ctx;
+    read_dir_content(p, "", ctx);
 }
 
 

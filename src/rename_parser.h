@@ -61,12 +61,25 @@ private:
     LogEvents &log;
     RenameRecords &renames;
 
+    class Context {
+    public:
+        void inherit(Context &ctx) {
+            ctx.flatten = flatten;
+            if (flatten) {
+                ctx.numbername = numbername;
+            }
+        }
+        int numbername = -1;
+        bool flatten = false;
+    };
+
     // recursive descent parsing
     ino_t read_inodes(parser::Parslet &p, std::set<ino_t> *inodes);
-    bool read_file_or_dir(parser::Parslet &p, const std::string &prefix);
-    void read_dir_content(parser::Parslet &p, const std::string &prefix);
-    void read_dir(parser::Parslet &p, const std::string &prefix);
-    void read_file(parser::Parslet &p, const std::string &path);
+    bool read_file_or_dir(parser::Parslet &p, const std::string &prefix, Context &);
+    void read_dir_content(parser::Parslet &p, const std::string &prefix, Context &);
+    void read_dir(parser::Parslet &p, const std::string &prefix, Context &);
+    void read_file(parser::Parslet &p, const std::string &path, Context &);
+    void update_context(parser::Parslet &p, Context &);
 };
 
 } // namespace s28
