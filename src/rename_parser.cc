@@ -77,7 +77,7 @@ void RenameParser::update_context(parser::Parslet &p, Context &ctx) {
    parser::trim(command);
 
    if (command.str() == "numbers") {
-       ctx.numbername = 0;
+       ctx.numbername.reset(new int(0));
    }
 
    if (command.str() == "flatten") {
@@ -96,9 +96,9 @@ bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefi
     utils::sanitize_filename(filename);
     std::string path;
     parser::ltrim(p);
-    if (ctx.numbername != -1 && *p == '#') {
-        filename = std::to_string(ctx.numbername);
-        ctx.numbername++;
+    if (ctx.numbername && *p == '#') {
+        filename = std::to_string(*ctx.numbername);
+        (*ctx.numbername)++;
     }
     if (prefix.empty()) {
         path = filename;
@@ -134,7 +134,7 @@ void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix, Conte
     Context newctx;
     ctx.inherit(newctx);
     p.expect_char('{');
-    renames.push_back(std::make_pair("", prefix));
+    if (newctx.mkdir) renames.push_back(std::make_pair("", prefix));
     read_dir_content(p, prefix, newctx);
     p.expect_char('}');
 }

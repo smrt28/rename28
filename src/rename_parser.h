@@ -10,6 +10,7 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <memory>
 
 #include "parser.h"
 #include "record.h"
@@ -67,10 +68,12 @@ private:
             ctx.flatten = flatten;
             if (flatten) {
                 ctx.numbername = numbername;
+                ctx.mkdir = false;
             }
         }
-        int numbername = -1;
+        std::shared_ptr<int> numbername;
         bool flatten = false;
+        bool mkdir = true;
     };
 
     // recursive descent parsing
