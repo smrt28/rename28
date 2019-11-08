@@ -92,7 +92,9 @@ bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefi
         update_context(p, ctx);
         return true;
     }
-    std::string filename = read_escaped_string(p);
+    std::string filename;
+    filename = read_escaped_string(p);
+
     utils::sanitize_filename(filename);
     std::string path;
     parser::ltrim(p);
@@ -168,7 +170,8 @@ void RenameParser::read_file(parser::Parslet &p, const std::string &path, Contex
         log.push_back(l);
     }
     saves += inomap.size() - 1;
-    while (*p != '\n') p.skip();
+    while (!p.empty() && *p != '\n' && *p != ';') p.skip();
+    p.skip();
 }
 
 
