@@ -5,7 +5,7 @@
 #include <exception>
 #include <sstream>
 
-#define RAISE_ERROR(msg) do { std::ostringstream self; self << msg; throw Error(self.str()); } while(0)
+#define RAISE_ERROR(msg) do { std::ostringstream self; self << msg; throw s28::Error(self.str()); } while(0)
 
 namespace s28 {
 class Error : public std::exception

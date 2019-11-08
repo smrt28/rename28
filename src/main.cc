@@ -38,8 +38,6 @@
 namespace s28 {
 
 
-
-
 namespace aux {
 template<typename CB>
 class Collector : public Traverse {
@@ -172,11 +170,20 @@ std::string tabs(int n) {
     return rv;
 }
 
+struct Args {
+    bool dry = false;
+    bool verbose = false;
+    bool force = false;
+    std::string renamefile;
+    std::string renamerepo;
+    std::string action;
+    std::string prefix;
+};
 
 
-int search_rename_repo() {
+int search_rename_repo(const Args &args) {
     s28::Node::Config config;
-    s28::Dir d(config, ".renameRepo", nullptr);
+    s28::Dir d(config, args.renamerepo, nullptr);
     d.build(config);
 
     s28::collector::Records records;
@@ -226,9 +233,9 @@ int search_rename_repo() {
     return 0;
 }
 
-int apply_rename() {
+int apply_rename(const Args &args) {
     s28::Node::Config config;
-    s28::Dir d(config, ".renameRepo", nullptr);
+    s28::Dir d(config, args.renamerepo, nullptr);
     d.build(config);
 
     s28::collector::BaseRecords records;
@@ -244,39 +251,83 @@ int apply_rename() {
         inomap[r->inode] = r.get();
     }
 
-    s28::RenameParser rp(inomap);
-    rp.parse("a");
+    s28::RenameParser::LogEvents logs;
+    s28::RenameParser::RenameRecords renames;
+
+    s28::RenameParser rp(inomap, logs, renames);
+    rp.parse(args.renamefile);
+
+    bool ok = true;
+    for (auto &log: logs) {
+        std::cerr << log.str() << std::endl;
+        ok = false;
+    }
+
+    if (!ok && !args.force) return 1;
+
+    s28::Escaper es;
+    for (auto &rename: renames) {
+        if (rename.first.empty()) {
+            std::cout << "mkdir -p " << args.prefix  << es.escape(rename.second) << std::endl;
+        } else {
+            std::cout << "ln " << es.escape(rename.first) << " " <<
+                  args.prefix << es.escape(rename.second) << std::endl;
+        }
+    }
 
     return 0;
 }
 
-int main(int argc, char **argv) {
+
+bool parse_args(Args &args, int argc, char **argv) {
     using namespace boost::program_options;
     options_description desc{"Options"};
-    desc.add_options()
-        ("help,h", "Help screen")
-        ("init,i", "initialize repo")
-        ("apply,a", "apply .rename")
-        ;
 
-    variables_map vm;
-    store(parse_command_line(argc, argv, desc), vm);
-    notify(vm);
+    try {
+        desc.add_options()
+            ("action,a", value<std::string>(&args.action)->required(), "apply | load")
+            ("help,h", "Help screen")
+            ("dry-run,d", bool_switch(&args.dry), "dry run")
+            ("verbose,v", bool_switch(&args.verbose), "verbose")
+            ("rename-file,f", value<std::string>(&args.renamefile)->default_value(".rename"), "rename input file")
+            ("rename-repo,r", value<std::string>(&args.renamerepo)->default_value(".renameRepo"), "rename repository name")
+            ("force", bool_switch(&args.force), "force")
+            ("prefix", value<std::string>(&args.prefix), "output file path prefix")
+            ;
 
-    if (vm.count("help")) {
+        positional_options_description posop;
+        posop.add("action", 1);
+
+        variables_map vm;
+        store(command_line_parser(argc, argv).options(desc)
+                      .positional(posop).run(),
+                    vm);
+        notify(vm);
+
+        if (vm.count("help")) RAISE_ERROR("Usage");
+        if (args.action != "apply" && args.action != "load")
+            RAISE_ERROR("invalid --apply argument");
+    } catch(const std::exception &e) {
+        std::cout << "err: " << e.what() << std::endl;
         std::cout << desc << std::endl;
-        return 0;
-
+        return false;
     }
-
-    if (vm.count("init")) {
-        search_rename_repo();
-        return 0;
-    }
-
-    if (vm.count("apply")) {
-        apply_rename();
-        return 0;
-
-    }
+    return true;
 }
+
+int main(int argc, char **argv) {
+    Args args;
+    try {
+        if (!parse_args(args, argc, argv)) return 1;
+        if (args.action == "load") {
+            search_rename_repo(args);
+        } else if (args.action == "apply") {
+            apply_rename(args);
+        }
+    } catch(const std::exception &e) {
+        std::cerr << "err:" << e.what() << std::endl;
+        return 1;
+    }
+    return 0;
+}
+

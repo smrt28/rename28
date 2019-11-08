@@ -95,6 +95,7 @@ void RenameParser::read_dir_content(parser::Parslet &p, const std::string &prefi
 
 void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix) {
     p.expect_char('{');
+    renames.push_back(std::make_pair("", prefix));
     read_dir_content(p, prefix);
     p.expect_char('}');
 }
@@ -110,18 +111,22 @@ void RenameParser::read_file(parser::Parslet &p, const std::string &path) {
     for (ino_t ino : inodes) {
         auto it = inomap.find(ino);
         if (it != inomap.end()) {
-            renames.push_back(std::make_pair(path, it->second->node->get_path()));
-            std::cout << "[" << path << "] <- [" <<
-                it->second->node->get_path() <<
-                "] #" << ino << std::endl;
+            renames.push_back(std::make_pair(it->second->node->get_path(), path));
             found = true;
             break;
         } else {
-            std::cerr << "warn: " << path << ": missing inode=" << ino << std::endl;
+            LogEvent l;
+            l.inode = ino;
+            l.path = path;
+            l.code = LogEvent::Code::MISSING_INODE;
+            log.push_back(l);
         }
     }
     if (!found) {
-        std::cerr << "err: " << path << "; is missing" << std::endl;
+        LogEvent l;
+        l.path = path;
+        l.code = LogEvent::Code::UNKNOWN_SOURCE;
+        log.push_back(l);
     }
     saves += inomap.size() - 1;
     while (*p != '\n') p.skip();
@@ -131,11 +136,39 @@ void RenameParser::read_file(parser::Parslet &p, const std::string &path) {
 void RenameParser::parse(const std::string &inputfile) {
     saves = 0;
     std::ifstream is (inputfile, std::ifstream::binary);
+
+    if (!is) {
+        RAISE_ERROR("can't open reaname-file: " << inputfile);
+    }
+
     std::string str((std::istreambuf_iterator<char>(is)),
             std::istreambuf_iterator<char>());
 
     parser::Parslet p(str);
     read_dir_content(p, "");
+}
+
+
+std::string RenameParser::LogEvent::str() {
+    std::ostringstream oss;
+
+    std::string msg;
+    switch (code) {
+        case NONE:
+            msg = "N/A";
+            break;
+        case MISSING_INODE:
+            oss << "warn: missing inode; path=" << path << "; inode=" << inode;
+            break;
+        case UNKNOWN_SOURCE:
+            oss << "err: unknown source; path=" << path;
+            break;
+        default:
+            oss << "err: not defined";
+    }
+
+
+    return oss.str();
 }
 
 
