@@ -81,6 +81,17 @@ private:
         }
         return rv;
     }
+
+    std::string push_rename(const std::string &src, const std::string &dst, Transformer::Type type) {
+        if (transformers.empty()) {
+            renames.push_back(std::make_pair(src, dst));
+            return dst;
+        }
+        std::string newdst = apply_transformers(dst, type);
+        if (newdst.empty()) return newdst;
+        renames.push_back(std::make_pair(src, newdst));
+        return newdst;
+    }
 };
 
 } // namespace s28

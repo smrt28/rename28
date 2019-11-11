@@ -128,8 +128,7 @@ void RenameParser::read_dir_content(parser::Parslet &p, const std::string &prefi
 
 void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix) {
     p.expect_char('{');
-    std::string d = apply_transformers(prefix, Transformer::DIRNAME);
-    renames.push_back(std::make_pair("", d));
+    std::string d = push_rename("", prefix, Transformer::DIRNAME);
     dep++;
     read_dir_content(p, d);
     while(!transformers.empty() && transformers.back()->dep == dep) {
@@ -150,8 +149,7 @@ void RenameParser::read_file(parser::Parslet &p, const std::string &path) {
     for (ino_t ino : inodes) {
         auto it = inomap.find(ino);
         if (it != inomap.end()) {
-            renames.push_back(std::make_pair(it->second->node->get_path(),
-                        apply_transformers(path, Transformer::FILENAME)));
+            push_rename(it->second->node->get_path(),path, Transformer::FILENAME);
             found = true;
             break;
         } else {
