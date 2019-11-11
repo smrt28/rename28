@@ -35,9 +35,7 @@ class Flatten : public Transformer {
     std::string path;
 };
 
-}
-
-
-}
+} // namespace tformer
+} // namespace s28
 
 #endif /* TRRANSFORMER_H */
