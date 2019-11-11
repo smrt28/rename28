@@ -62,7 +62,7 @@ ino_t RenameParser::read_inodes(parser::Parslet &p, std::set<ino_t> *inodes) {
 }
 
 
-void RenameParser::update_context(parser::Parslet &p, Context &ctx) {
+void RenameParser::update_context(parser::Parslet &p, const std::string &prefix) {
    p.expect_char('$');
    const char *it = p.begin();
    parser::Parslet command;
@@ -77,19 +77,22 @@ void RenameParser::update_context(parser::Parslet &p, Context &ctx) {
    parser::trim(command);
 
    if (command.str() == "numbers") {
-       ctx.numbername.reset(new int(0));
+       std::unique_ptr<Transformer> t(new tformer::Numbers(dep));
+       transformers.push_back(std::move(t));
    }
 
    if (command.str() == "flatten") {
-       std::cerr << "flat" << std::endl;
-      ctx.flatten = true;
+       std::unique_ptr<Transformer> t(new tformer::Flatten(dep, prefix));
+       transformers.push_back(std::move(t));
    }
+
+
 }
 
-bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefix, Context &ctx) {
+bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefix) {
     if (p.empty() || *p == '}') return false;
     if (*p == '$') {
-        update_context(p, ctx);
+        update_context(p, prefix);
         return true;
     }
     std::string filename;
@@ -98,10 +101,6 @@ bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefi
     utils::sanitize_filename(filename);
     std::string path;
     parser::ltrim(p);
-    if (ctx.numbername && *p == '#') {
-        filename = std::to_string(*ctx.numbername);
-        (*ctx.numbername)++;
-    }
     if (prefix.empty()) {
         path = filename;
     } else {
@@ -109,40 +108,39 @@ bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefi
     }
     switch(*p) {
         case '{':
-            if (ctx.flatten) {
-                read_dir(p, prefix, ctx);
-            } else {
-                read_dir(p, path, ctx);
-            }
+            read_dir(p, path);
             return true;
         case '#':
-
-            read_file(p, path, ctx);
+            read_file(p, path);
             return true;
 
     }
     RAISE_ERROR("expected file or dir");
 }
 
-void RenameParser::read_dir_content(parser::Parslet &p, const std::string &prefix, Context &ctx) {
+void RenameParser::read_dir_content(parser::Parslet &p, const std::string &prefix) {
     parser::ltrim(p);
-    while(read_file_or_dir(p, prefix, ctx)) {
+    while(read_file_or_dir(p, prefix)) {
         parser::ltrim(p);
     }
 }
 
 
-void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix, Context &ctx) {
-    Context newctx;
-    ctx.inherit(newctx);
+void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix) {
     p.expect_char('{');
-    if (newctx.mkdir) renames.push_back(std::make_pair("", prefix));
-    read_dir_content(p, prefix, newctx);
+    std::string d = apply_transformers(prefix, Transformer::DIRNAME);
+    renames.push_back(std::make_pair("", d));
+    dep++;
+    read_dir_content(p, d);
+    while(!transformers.empty() && transformers.back()->dep == dep) {
+        transformers.pop_back();
+    }
+    dep--;
     p.expect_char('}');
 }
 
 
-void RenameParser::read_file(parser::Parslet &p, const std::string &path, Context &ctx) {
+void RenameParser::read_file(parser::Parslet &p, const std::string &path) {
     p.expect_char('#');
     std::set<ino_t> inodes;
 
@@ -152,7 +150,8 @@ void RenameParser::read_file(parser::Parslet &p, const std::string &path, Contex
     for (ino_t ino : inodes) {
         auto it = inomap.find(ino);
         if (it != inomap.end()) {
-            renames.push_back(std::make_pair(it->second->node->get_path(), path));
+            renames.push_back(std::make_pair(it->second->node->get_path(),
+                        apply_transformers(path, Transformer::FILENAME)));
             found = true;
             break;
         } else {
@@ -169,14 +168,12 @@ void RenameParser::read_file(parser::Parslet &p, const std::string &path, Contex
         l.code = LogEvent::Code::UNKNOWN_SOURCE;
         log.push_back(l);
     }
-    saves += inomap.size() - 1;
     while (!p.empty() && *p != '\n' && *p != ';') p.skip();
     p.skip();
 }
 
 
 void RenameParser::parse(const std::string &inputfile) {
-    saves = 0;
     std::ifstream is (inputfile, std::ifstream::binary);
 
     if (!is) {
@@ -187,8 +184,8 @@ void RenameParser::parse(const std::string &inputfile) {
             std::istreambuf_iterator<char>());
 
     parser::Parslet p(str);
-    Context ctx;
-    read_dir_content(p, "", ctx);
+    dep = 0;
+    read_dir_content(p, "");
 }
 
 

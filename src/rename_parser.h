@@ -12,6 +12,7 @@
 #include <set>
 #include <memory>
 
+#include "transformer.h"
 #include "parser.h"
 #include "record.h"
 
@@ -57,32 +58,29 @@ public:
     void parse(const std::string &inputfile);
 
 private:
-    int saves = 0;
     const InodeMap &inomap;
     LogEvents &log;
     RenameRecords &renames;
+    int dep = 0;
 
-    class Context {
-    public:
-        void inherit(Context &ctx) {
-            ctx.flatten = flatten;
-            if (flatten) {
-                ctx.numbername = numbername;
-                ctx.mkdir = false;
-            }
-        }
-        std::shared_ptr<int> numbername;
-        bool flatten = false;
-        bool mkdir = true;
-    };
 
     // recursive descent parsing
     ino_t read_inodes(parser::Parslet &p, std::set<ino_t> *inodes);
-    bool read_file_or_dir(parser::Parslet &p, const std::string &prefix, Context &);
-    void read_dir_content(parser::Parslet &p, const std::string &prefix, Context &);
-    void read_dir(parser::Parslet &p, const std::string &prefix, Context &);
-    void read_file(parser::Parslet &p, const std::string &path, Context &);
-    void update_context(parser::Parslet &p, Context &);
+    bool read_file_or_dir(parser::Parslet &p, const std::string &prefix);
+    void read_dir_content(parser::Parslet &p, const std::string &prefix);
+    void read_dir(parser::Parslet &p, const std::string &prefix);
+    void read_file(parser::Parslet &p, const std::string &path);
+    void update_context(parser::Parslet &p, const std::string &prefix);
+
+    std::vector<std::unique_ptr<Transformer>> transformers;
+
+    std::string apply_transformers(const std::string &filename, Transformer::Type type) {
+        std::string rv = filename;
+        for (auto &t: transformers) {
+            rv = t->transform(rv, type);
+        }
+        return rv;
+    }
 };
 
 } // namespace s28
