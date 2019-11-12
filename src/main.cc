@@ -270,7 +270,8 @@ int apply_rename(const Args &args) {
         if (rename.src.empty()) {
             std::cout << "mkdir -p " << args.prefix  << es.escape(rename.dst) << std::endl;
         } else {
-            if (rename.flags & s28::RenameParser::RenameRecord::DUPLICATE) {
+            if ((rename.flags & s28::RenameParser::RenameRecord::DUPLICATE)
+                    && !(rename.flags & s28::RenameParser::RenameRecord::KEEP)) {
                 std::cout << "# ";
             }
             std::cout << "ln " << es.escape(rename.src) << " " <<

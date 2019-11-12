@@ -41,6 +41,7 @@ class Numbers : public Transformer {
         } else {
             filename = std::to_string(++n) + "_" + filename;
         }
+
         return OK;
     }
 
@@ -54,11 +55,30 @@ public:
 
     int transform(std::string &path, std::string &filename, Type type) override {
         path = fixedpath;
-        if (type == DIRNAME) filename = "";
+        if (type == DIRNAME) {
+            filename = "";
+            return OK;
+        }
+
+        if (usednames.count(filename)) {
+            int dups = 0;
+            for (;;) {
+                dups ++;
+                std::string s = filename + "_dup" + std::to_string(dups);
+                if (!usednames.count(s)) {
+                    filename = s;
+                    break;
+                }
+            }
+        }
+
+        usednames.insert(filename);
+
         return OK;
     }
 
     std::string fixedpath;
+    std::set<std::string> usednames;
 };
 
 } // namespace tformer

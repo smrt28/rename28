@@ -89,6 +89,10 @@ void RenameParser::update_context(parser::Parslet &p, const std::string &prefix)
    if (command.str() == "keepdups") {
        keepdups = true;
    }
+
+   if (command.str() == "dropdups") {
+       keepdups = false;
+   }
 }
 
 bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefix) {
