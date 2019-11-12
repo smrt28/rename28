@@ -2,6 +2,20 @@
 #define TRRANSFORMER_H
 namespace s28 {
 
+class DupHandler {
+public:
+    DupHandler(int dep) : dep(dep) {}
+
+    bool check_duplicate(ino_t ino) {
+        if (dups.count(ino)) return true;
+        dups.insert(ino);
+        return false;
+    }
+
+    std::set<ino_t> dups;
+    const int dep;
+};
+
 class Transformer {
 public:
     enum Type {
@@ -22,7 +36,11 @@ class Numbers : public Transformer {
 
     int transform(std::string &path, std::string &filename, Type type) override {
         if (type == DIRNAME) return OK;
-        filename = std::to_string(++n) + "_" + filename;
+        if (filename.empty()) {
+            filename = std::to_string(++n);
+        } else {
+            filename = std::to_string(++n) + "_" + filename;
+        }
         return OK;
     }
 

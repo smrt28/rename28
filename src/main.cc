@@ -267,11 +267,14 @@ int apply_rename(const Args &args) {
 
     s28::Escaper es;
     for (auto &rename: renames) {
-        if (rename.first.empty()) {
-            std::cout << "mkdir -p " << args.prefix  << es.escape(rename.second) << std::endl;
+        if (rename.src.empty()) {
+            std::cout << "mkdir -p " << args.prefix  << es.escape(rename.dst) << std::endl;
         } else {
-            std::cout << "ln " << es.escape(rename.first) << " " <<
-                  args.prefix << es.escape(rename.second) << std::endl;
+            if (rename.flags & s28::RenameParser::RenameRecord::DUPLICATE) {
+                std::cout << "# ";
+            }
+            std::cout << "ln " << es.escape(rename.src) << " " <<
+                  args.prefix << es.escape(rename.dst) << std::endl;
         }
     }
 

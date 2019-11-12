@@ -43,7 +43,13 @@ public:
         std::string str();
     };
 
-    typedef std::pair<std::string, std::string> RenameRecord;
+    struct RenameRecord {
+        static const uint32_t DUPLICATE = 1 << 0;
+        static const uint32_t KEEP =      1 << 1;
+        std::string src;
+        std::string dst;
+        uint32_t flags = 0;
+    };
     typedef std::map<ino_t, s28::collector::BaseRecord *> InodeMap;
     typedef std::vector<LogEvent> LogEvents;
     typedef std::vector<RenameRecord> RenameRecords;
@@ -72,6 +78,7 @@ private:
     void read_file(parser::Parslet &p, const std::string &path);
     void update_context(parser::Parslet &p, const std::string &prefix);
 
+    std::set<ino_t> duplicates;
     std::vector<std::unique_ptr<Transformer>> transformers;
 
     uint32_t apply_transformers(std::string &path, std::string &filename, Transformer::Type type) {
@@ -84,7 +91,9 @@ private:
 
     std::set<std::string> dircreated;
 
-    void push_rename(const std::string &src, const std::string &dst, Transformer::Type type) {
+    void push_rename(const std::string &src, const std::string &dst,
+            Transformer::Type type, const uint32_t flags = 0)
+    {
         if (type == Transformer::DIRNAME) {
             if (dircreated.count(dst)) {
                 return;
@@ -92,8 +101,12 @@ private:
         }
 
         dircreated.insert(dst);
-        renames.push_back(std::make_pair(src, dst));
+        RenameRecord rec;
+        rec.src = src; rec.dst = dst; rec.flags = flags;
+        renames.push_back(rec);
     }
+
+    bool keepdups = false;
 };
 
 } // namespace s28
