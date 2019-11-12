@@ -82,8 +82,16 @@ private:
         return res;
     }
 
+    std::set<std::string> dircreated;
 
     void push_rename(const std::string &src, const std::string &dst, Transformer::Type type) {
+        if (type == Transformer::DIRNAME) {
+            if (dircreated.count(dst)) {
+                return;
+            }
+        }
+
+        dircreated.insert(dst);
         renames.push_back(std::make_pair(src, dst));
     }
 };

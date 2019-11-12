@@ -8,8 +8,7 @@ public:
         DIRNAME, FILENAME
     };
 
-    static const uint32_t OK            = 1 << 1;
-    static const uint32_t SKIP_MKDIR    = 1 << 2;
+    static const uint32_t OK            = 0;
 
 
     Transformer(int dep) : dep(dep) {}
@@ -38,7 +37,7 @@ public:
     int transform(std::string &path, std::string &filename, Type type) override {
         path = fixedpath;
         if (type == DIRNAME) filename = "";
-        return SKIP_MKDIR;
+        return OK;
     }
 
     std::string fixedpath;

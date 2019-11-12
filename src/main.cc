@@ -219,8 +219,8 @@ int search_rename_repo(const Args &args) {
                     }
                     d = d->next;
                 }
-                std::cout << " !Dup";
             }
+            std::cout << ";";
         }
 
         std::cout << std::endl;

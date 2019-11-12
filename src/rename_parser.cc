@@ -99,13 +99,12 @@ bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefi
     std::string path = prefix;
     parser::ltrim(p);
 
-    uint32_t trres = 0;
     switch(*p) {
         case '{':
-            trres = apply_transformers(path, filename, Transformer::DIRNAME);
+            apply_transformers(path, filename, Transformer::DIRNAME);
             break;
         case '#':
-            trres = apply_transformers(path, filename, Transformer::FILENAME);
+            apply_transformers(path, filename, Transformer::FILENAME);
             break;
         default:
             RAISE_ERROR("read_file_or_dir");
@@ -121,9 +120,7 @@ bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefi
 
     switch(*p) {
         case '{':
-            if (!(trres & Transformer::SKIP_MKDIR)) {
-                push_rename("", path, Transformer::DIRNAME);
-            }
+            push_rename("", path, Transformer::DIRNAME);
             read_dir(p, path);
             return true;
         case '#':
