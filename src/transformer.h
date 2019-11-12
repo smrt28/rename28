@@ -7,32 +7,41 @@ public:
     enum Type {
         DIRNAME, FILENAME
     };
+
+    static const uint32_t OK            = 1 << 1;
+    static const uint32_t SKIP_MKDIR    = 1 << 2;
+
+
     Transformer(int dep) : dep(dep) {}
-    virtual std::string transform(const std::string &filename, Type) = 0;
+    virtual int transform(std::string &path, std::string &filename, Type) { return OK; }
     const int dep;
 };
 
 namespace tformer {
 class Numbers : public Transformer {
     using Transformer::Transformer;
-    std::string transform(const std::string &filename, Type type) override {
-        if (type == DIRNAME) return filename;
-        return filename + "_" + std::to_string(++n);
+
+    int transform(std::string &path, std::string &filename, Type type) override {
+        if (type == DIRNAME) return OK;
+        filename = std::to_string(++n) + "_" + filename;
+        return OK;
     }
+
     int n = 0;
 };
 
 class Flatten : public Transformer {
-    public:
-    Flatten(int dep, const std::string &path): Transformer(dep), path(path) {
-        std::cerr << "flatten: " << path << std::endl;
+public:
+    Flatten(int dep, const std::string &path): Transformer(dep), fixedpath(path) {   }
+
+
+    int transform(std::string &path, std::string &filename, Type type) override {
+        path = fixedpath;
+        if (type == DIRNAME) filename = "";
+        return SKIP_MKDIR;
     }
-    std::string transform(const std::string &filename, Type type) override {
-        if (type == FILENAME)
-            return filename;
-        return path;
-    }
-    std::string path;
+
+    std::string fixedpath;
 };
 
 } // namespace tformer

@@ -74,23 +74,17 @@ private:
 
     std::vector<std::unique_ptr<Transformer>> transformers;
 
-    std::string apply_transformers(const std::string &filename, Transformer::Type type) {
-        std::string rv = filename;
+    uint32_t apply_transformers(std::string &path, std::string &filename, Transformer::Type type) {
+        uint32_t res = 0;
         for (auto &t: transformers) {
-            rv = t->transform(rv, type);
+            res |= t->transform(path, filename, type);
         }
-        return rv;
+        return res;
     }
 
-    std::string push_rename(const std::string &src, const std::string &dst, Transformer::Type type) {
-        if (transformers.empty()) {
-            renames.push_back(std::make_pair(src, dst));
-            return dst;
-        }
-        std::string newdst = apply_transformers(dst, type);
-        if (newdst.empty()) return newdst;
-        renames.push_back(std::make_pair(src, newdst));
-        return newdst;
+
+    void push_rename(const std::string &src, const std::string &dst, Transformer::Type type) {
+        renames.push_back(std::make_pair(src, dst));
     }
 };
 

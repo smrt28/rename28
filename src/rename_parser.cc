@@ -85,8 +85,6 @@ void RenameParser::update_context(parser::Parslet &p, const std::string &prefix)
        std::unique_ptr<Transformer> t(new tformer::Flatten(dep, prefix));
        transformers.push_back(std::move(t));
    }
-
-
 }
 
 bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefix) {
@@ -95,19 +93,37 @@ bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefi
         update_context(p, prefix);
         return true;
     }
-    std::string filename;
-    filename = read_escaped_string(p);
-
+    std::string filename = read_escaped_string(p);
     utils::sanitize_filename(filename);
-    std::string path;
+
+    std::string path = prefix;
     parser::ltrim(p);
-    if (prefix.empty()) {
-        path = filename;
-    } else {
-        path = prefix + "/" + filename;
-    }
+
+    uint32_t trres = 0;
     switch(*p) {
         case '{':
+            trres = apply_transformers(path, filename, Transformer::DIRNAME);
+            break;
+        case '#':
+            trres = apply_transformers(path, filename, Transformer::FILENAME);
+            break;
+        default:
+            RAISE_ERROR("read_file_or_dir");
+    }
+
+    if (path.empty()) {
+        path = filename;
+    } else {
+        if (!filename.empty())
+            path = path + "/" + filename;
+    }
+
+
+    switch(*p) {
+        case '{':
+            if (!(trres & Transformer::SKIP_MKDIR)) {
+                push_rename("", path, Transformer::DIRNAME);
+            }
             read_dir(p, path);
             return true;
         case '#':
@@ -128,9 +144,8 @@ void RenameParser::read_dir_content(parser::Parslet &p, const std::string &prefi
 
 void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix) {
     p.expect_char('{');
-    std::string d = push_rename("", prefix, Transformer::DIRNAME);
     dep++;
-    read_dir_content(p, d);
+    read_dir_content(p, prefix);
     while(!transformers.empty() && transformers.back()->dep == dep) {
         transformers.pop_back();
     }
