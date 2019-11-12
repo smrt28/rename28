@@ -5,6 +5,7 @@
 #include <string>
 
 #include "error.h"
+#include "escape.h"
 
 namespace s28 {
 namespace parser {
@@ -241,6 +242,37 @@ inline std::pair<std::string, std::string> eq(Parslet &p) {
         rv.second = p.str();
     }
     return rv;
+}
+
+inline std::string read_escaped_string(parser::Parslet &p) {
+    parser::ltrim(p);
+    parser::Parslet orig = p;
+
+    if (*p == '\'') {
+        p.skip();
+        while (*p != '\'') {
+            if (p.next() == '\\') {
+                if (p.next() == 'x') {
+                    p.skip();
+                }
+                p.skip();
+                continue;
+            }
+        }
+        p.skip();
+    } else {
+        while (!isspace(*p)) {
+            if (p.next() == '\\') {
+                if (p.next() == 'x') {
+                    p.skip();
+                }
+                p.skip();
+                continue;
+            }
+        }
+    }
+    Escaper es;
+    return es.unescape(parser::Parslet(orig.begin(), p.begin()).str());
 }
 
 } // nemaspace parser

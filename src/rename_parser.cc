@@ -6,44 +6,10 @@
 #include <boost/lexical_cast.hpp>
 
 #include "rename_parser.h"
-#include "escape.h"
 #include "utils.h"
 #include "node.h"
 
 namespace s28 {
-namespace {
-std::string read_escaped_string(parser::Parslet &p) {
-    parser::ltrim(p);
-    parser::Parslet orig = p;
-
-    if (*p == '\'') {
-        p.skip();
-        while (*p != '\'') {
-            if (p.next() == '\\') {
-                if (p.next() == 'x') {
-                    p.skip();
-                }
-                p.skip();
-                continue;
-            }
-        }
-        p.skip();
-    } else {
-        while (!isspace(*p)) {
-            if (p.next() == '\\') {
-                if (p.next() == 'x') {
-                    p.skip();
-                }
-                p.skip();
-                continue;
-            }
-        }
-    }
-    Escaper es;
-    return es.unescape(parser::Parslet(orig.begin(), p.begin()).str());
-}
-} // namespace
-
 
 ino_t RenameParser::read_inodes(parser::Parslet &p, std::set<ino_t> *inodes) {
     ino_t firstino = 0;
@@ -68,8 +34,10 @@ void RenameParser::update_context(parser::Parslet &p, const std::string &prefix)
    parser::Parslet command;
    for (;;) {
        p++;
-       if (*p == '\n') {
+       if (*p == '\n' || *p == ';') {
            command = parser::Parslet(it, p.begin());
+           p.skip();
+           parser::ltrim(p);
            break;
        }
    }
@@ -79,31 +47,28 @@ void RenameParser::update_context(parser::Parslet &p, const std::string &prefix)
    if (command.str() == "numbers") {
        std::unique_ptr<Transformer> t(new tformer::Numbers(dep));
        transformers.push_back(std::move(t));
-   }
-
-   if (command.str() == "flatten") {
+   } else if (command.str() == "flatten") {
        std::unique_ptr<Transformer> t(new tformer::Flatten(dep, prefix));
        transformers.push_back(std::move(t));
-   }
-
-   if (command.str() == "keepdups") {
+   } else if (command.str() == "keepdups") {
        keepdups = true;
-   }
-
-   if (command.str() == "dropdups") {
+   } else if (command.str() == "dropdups") {
        keepdups = false;
+   } else {
+       RAISE_ERROR("invalid command");
    }
 }
 
 bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefix) {
     if (p.empty() || *p == '}') return false;
-    if (*p == '$') {
+    while (!p.empty() && *p == '$') {
         update_context(p, prefix);
         return true;
     }
 
     std::string filename;
-    if (*p != '#')filename = read_escaped_string(p);
+    if (*p != '#')
+        filename = parser::read_escaped_string(p);
 
     std::string path = prefix;
     parser::ltrim(p);
