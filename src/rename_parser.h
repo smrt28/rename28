@@ -4,7 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
+#include <boost/algorithm/string/join.hpp>
 
 #include <string>
 #include <map>
@@ -63,6 +63,15 @@ public:
 
     void parse(const std::string &inputfile);
 
+
+    void dumpchain() {
+        for (auto &s: dirchain) {
+            std::cerr << s << " ";
+        }
+        std::cerr << std::endl;
+
+    }
+
 private:
     const InodeMap &inomap;
     LogEvents &log;
@@ -71,38 +80,38 @@ private:
 
 
     // recursive descent parsing
-    ino_t read_inodes(parser::Parslet &p, std::set<ino_t> *inodes);
-    bool read_file_or_dir(parser::Parslet &p, const std::string &prefix);
-    void read_dir_content(parser::Parslet &p, const std::string &prefix);
-    void read_dir(parser::Parslet &p, const std::string &prefix);
-    void read_file(parser::Parslet &p, const std::string &path);
-    void update_context(parser::Parslet &p, const std::string &prefix);
+    ino_t read_inodes(std::set<ino_t> *inodes);
+    bool read_file_or_dir();
+    void read_dir_content();
+    void read_dir();
+    void read_file();
+    void update_context();
+
+    parser::Parslet pars;
+
+    std::vector<std::string> dirchain;
 
     std::set<ino_t> duplicates;
-    std::vector<std::unique_ptr<Transformer>> transformers;
 
-    uint32_t apply_transformers(std::string &path, std::string &filename, Transformer::Type type) {
-        uint32_t res = 0;
-        for (auto &t: transformers) {
-            res |= t->transform(path, filename, type);
-        }
-        return res;
-    }
 
     std::set<std::string> dircreated;
 
-    void push_rename(const std::string &src, const std::string &dst,
-            Transformer::Type type, const uint32_t flags = 0)
-    {
-        if (type == Transformer::DIRNAME) {
-            if (dircreated.count(dst)) {
-                return;
-            }
-        }
-
-        dircreated.insert(dst);
+    void push_rename_file(const std::string &src, uint32_t flags) {
         RenameRecord rec;
-        rec.src = src; rec.dst = dst; rec.flags = flags;
+        rec.src = src;
+        rec.dst = boost::algorithm::join(dirchain, "/");
+        rec.flags = flags;
+        renames.push_back(rec);
+    }
+
+    void push_create_directory() {
+        if (dirchain.empty()) return;
+        std::string path;
+        path = boost::algorithm::join(dirchain, "/");
+        if (dircreated.count(path)) return;
+        dircreated.insert(path);
+        RenameRecord rec;
+        rec.dst = path;
         renames.push_back(rec);
     }
 

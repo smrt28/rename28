@@ -11,39 +11,39 @@
 
 namespace s28 {
 
-ino_t RenameParser::read_inodes(parser::Parslet &p, std::set<ino_t> *inodes) {
+ino_t RenameParser::read_inodes(std::set<ino_t> *inodes) {
     ino_t firstino = 0;
     for(;;) {
-        while(isdigit(*p)) {
-            ino_t ino = boost::lexical_cast<ino_t>(parser::number(p));
+        while(isdigit(*pars)) {
+            ino_t ino = boost::lexical_cast<ino_t>(parser::number(pars));
             if (!firstino) {
                 firstino = ino;
             }
             if (inodes) inodes->insert(ino);
         }
-        if (*p != '|') break;
-        p.skip();
+        if (*pars != '|') break;
+        pars.skip();
     }
     return firstino;
 }
 
 
-void RenameParser::update_context(parser::Parslet &p, const std::string &prefix) {
-   p.expect_char('$');
-   const char *it = p.begin();
+void RenameParser::update_context() {
+   pars.expect_char('$');
+   const char *it = pars.begin();
    parser::Parslet command;
    for (;;) {
-       p++;
-       if (*p == '\n' || *p == ';') {
-           command = parser::Parslet(it, p.begin());
-           p.skip();
-           parser::ltrim(p);
+       pars++;
+       if (*pars == '\n' || *pars == ';') {
+           command = parser::Parslet(it, pars.begin());
+           pars.skip();
+           parser::ltrim(pars);
            break;
        }
    }
 
    parser::trim(command);
-
+/*
    if (command.str() == "numbers") {
        std::unique_ptr<Transformer> t(new tformer::Numbers(dep));
        transformers.push_back(std::move(t));
@@ -57,89 +57,63 @@ void RenameParser::update_context(parser::Parslet &p, const std::string &prefix)
    } else {
        RAISE_ERROR("invalid command");
    }
+   */
 }
 
-bool RenameParser::read_file_or_dir(parser::Parslet &p, const std::string &prefix) {
-    if (p.empty() || *p == '}') return false;
-    while (!p.empty() && *p == '$') {
-        update_context(p, prefix);
+bool RenameParser::read_file_or_dir() {
+    if (pars.empty() || *pars == '}') return false;
+    /*
+    while (!pars.empty() && *pars == '$') {
+//        update_context(prefix);
         return true;
     }
-
+*/
     std::string filename;
-    if (*p != '#')
-        filename = parser::read_escaped_string(p);
+    if (*pars != '#')
+        filename = parser::read_escaped_string(pars);
 
-    std::string path = prefix;
-    parser::ltrim(p);
+    parser::ltrim(pars);
 
-    switch(*p) {
+    switch(*pars) {
         case '{':
-            apply_transformers(path, filename, Transformer::DIRNAME);
-            break;
-        case '#':
-            apply_transformers(path, filename, Transformer::FILENAME);
-            break;
-        default:
-            RAISE_ERROR("read_file_or_dir");
-    }
-
-    if (path.empty()) {
-        path = filename;
-    } else {
-        if (!filename.empty()) {
-            utils::sanitize_filename(filename);
-            path = path + "/" + filename;
-        }
-    }
-
-    switch(*p) {
-        case '{':
-            push_rename("", path, Transformer::DIRNAME);
-            read_dir(p, path);
+            dirchain.push_back(filename);
+            push_create_directory();
+            read_dir();
+            dirchain.pop_back();
             return true;
         case '#':
-            read_file(p, path);
+            dirchain.push_back(filename);
+            read_file();
+            dirchain.pop_back();
             return true;
 
     }
     RAISE_ERROR("expected file or dir");
 }
 
-void RenameParser::read_dir_content(parser::Parslet &p, const std::string &prefix) {
-    parser::ltrim(p);
-    while(read_file_or_dir(p, prefix)) {
-        parser::ltrim(p);
+void RenameParser::read_dir_content() {
+    parser::ltrim(pars);
+    while(read_file_or_dir()) {
+        parser::ltrim(pars);
     }
 }
 
 
-namespace {
-template<typename Op>
-void pop(std::vector<std::unique_ptr<Op>> &op, int dep) {
-    if (op.empty()) return;
-    while(!op.empty() && op.back()->dep == dep) {
-        op.pop_back();
-    }
 
-}
-}
-
-void RenameParser::read_dir(parser::Parslet &p, const std::string &prefix) {
-    p.expect_char('{');
+void RenameParser::read_dir() {
+    pars.expect_char('{');
     dep++;
-    read_dir_content(p, prefix);
-    pop(transformers, dep);
+    read_dir_content();
     dep--;
-    p.expect_char('}');
+    pars.expect_char('}');
 }
 
 
-void RenameParser::read_file(parser::Parslet &p, const std::string &path) {
-    p.expect_char('#');
+void RenameParser::read_file() {
+    pars.expect_char('#');
     std::set<ino_t> inodes;
 
-    read_inodes(p, &inodes);
+    read_inodes(&inodes);
 
     bool found = false;
     for (ino_t ino : inodes) {
@@ -152,25 +126,29 @@ void RenameParser::read_file(parser::Parslet &p, const std::string &path) {
             } else {
                 duplicates.insert(ino);
             }
-            push_rename(it->second->node->get_path(), path, Transformer::FILENAME, flags);
+            push_rename_file(it->second->node->get_path(), flags);
             found = true;
             break;
         } else {
+            /*
             LogEvent l;
             l.inode = ino;
             l.path = path;
             l.code = LogEvent::Code::MISSING_INODE;
             log.push_back(l);
+            */
         }
     }
     if (!found) {
+        /*
         LogEvent l;
         l.path = path;
         l.code = LogEvent::Code::UNKNOWN_SOURCE;
         log.push_back(l);
+        */
     }
-    while (!p.empty() && *p != '\n' && *p != ';') p.skip();
-    p.skip();
+    while (!pars.empty() && *pars != '\n' && *pars != ';') pars.skip();
+    pars.skip();
 }
 
 
@@ -184,9 +162,9 @@ void RenameParser::parse(const std::string &inputfile) {
     std::string str((std::istreambuf_iterator<char>(is)),
             std::istreambuf_iterator<char>());
 
-    parser::Parslet p(str);
+    pars = parser::Parslet(str);
     dep = 0;
-    read_dir_content(p, "");
+    read_dir_content();
 }
 
 
