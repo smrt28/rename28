@@ -27,7 +27,8 @@ ino_t RenameParser::read_inodes(std::set<ino_t> *inodes) {
     return firstino;
 }
 
-void RenameParser::update_context() {
+void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
+{
    pars.expect_char('$');
    const char *it = pars.begin();
    parser::Parslet command;
@@ -43,19 +44,15 @@ void RenameParser::update_context() {
 
    parser::trim(command);
 
-   std::vector<std::function<void()>> revstack;
-
    if (command.str() == "flatten") {
        if (flatten_dep != -1)
            RAISE_ERROR("double flattening");
-
        int orig = flatten_dep;
-
        revstack.push_back([this, orig]() {
            this->flatten_dep = orig;
        });
-
        flatten_dep = dirchain.size();
+       return;
    }
 }
 
@@ -88,18 +85,18 @@ bool RenameParser::read_file_or_dir() {
 void RenameParser::read_dir_content() {
     parser::ltrim(pars);
 
-//    CommandContext origctx = ctx;
+    std::vector<std::function<void()>> revstack;
 
     // read commands to the commands stack
     while (!pars.empty() && *pars == '$') {
-        update_context();
+        update_context(revstack);
     }
 
     while(read_file_or_dir()) {
         parser::ltrim(pars);
     }
 
-//    ctx = origctx;
+    for (auto &f: revstack) f();
 }
 
 

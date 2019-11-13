@@ -79,7 +79,7 @@ private:
     void read_dir_content();
     void read_dir();
     void read_file();
-    void update_context();
+    void update_context(std::vector<std::function<void()>> &revstack);
 
     parser::Parslet pars;
 
