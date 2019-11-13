@@ -5,28 +5,21 @@ namespace s28 {
 typedef std::vector<std::string> DirChain;
 
 namespace cmd {
+namespace filename {
 
-class Command {
-    public:
-        Command() {}
-        virtual void update(DirChain &chain) = 0;
+class Base {
+public:
+    virtual std::string get_file_name(const std::string &) = 0;
 };
 
-
-class Flatten : public Command {
-    public:
-    Flatten(size_t dep): dep(dep) {}
-    void update(DirChain &chain) override {
-        while(chain.size() > dep) chain.pop_back();
+class Identity : public Base {
+public:
+    std::string get_file_name(const std::string &s) {
+        return s;
     }
-    private:
-        size_t dep;
 };
 
-
-
-
-
+} // namespace filename
 } // namespace cmd
 } // namespace s28
 

@@ -64,29 +64,18 @@ public:
     void parse(const std::string &inputfile);
 
 
-    void dumpchain() {
-        for (auto &s: dirchain) {
-            std::cerr << s << " ";
-        }
-        std::cerr << std::endl;
-
-    }
-
 private:
     const InodeMap &inomap;
     LogEvents &log;
     RenameRecords &renames;
 
-    struct CommandContext {
-        int flatten_dep = -1;
-    };
-
-    CommandContext ctx;
+    int flatten_dep = -1;
 
 
     // recursive descent parsing
     ino_t read_inodes(std::set<ino_t> *inodes);
     bool read_file_or_dir();
+    void read_commands();
     void read_dir_content();
     void read_dir();
     void read_file();
@@ -102,17 +91,19 @@ private:
         RenameRecord rec;
         rec.src = src;
         std::string path;
-        if (ctx.flatten_dep >= 0) {
-            std::vector<std::string> v;
-            for (int i = 0; i < ctx.flatten_dep; i++) {
-                v.push_back(dirchain.at(i));
-            }
-            v.push_back(dirchain.back());
-            path = boost::algorithm::join(v, "/");
 
-        } else {
-            path = boost::algorithm::join(dirchain, "/");
+        size_t pathsize = dirchain.size() - 1;
+        if (flatten_dep != -1) pathsize = flatten_dep ;
+
+        std::vector<std::string> v;
+        for (size_t i = 0; i < pathsize; i++) {
+            v.push_back(dirchain.at(i));
         }
+
+        v.push_back(dirchain.back());
+
+        path = boost::algorithm::join(v, "/");
+
 
         rec.dst = path;
         rec.flags = flags;
@@ -121,7 +112,7 @@ private:
 
     void push_create_directory() {
         if (dirchain.empty()) return;
-        if (ctx.flatten_dep != -1 && dirchain.size() > (size_t)ctx.flatten_dep) return;
+        if (flatten_dep != -1 && dirchain.size() > (size_t)flatten_dep) return;
         std::string path;
         path = boost::algorithm::join(dirchain, "/");
         if (dircreated.count(path)) return;
