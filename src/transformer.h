@@ -8,13 +8,19 @@ namespace cmd {
 
 class Command {
     public:
-        virtual void update_chain(DirChain &dirchain) {}
+        Command() {}
+        virtual void update(DirChain &chain) = 0;
 };
 
 
-class Flatten {
-
-
+class Flatten : public Command {
+    public:
+    Flatten(size_t dep): dep(dep) {}
+    void update(DirChain &chain) override {
+        while(chain.size() > dep) chain.pop_back();
+    }
+    private:
+        size_t dep;
 };
 
 

@@ -76,7 +76,12 @@ private:
     const InodeMap &inomap;
     LogEvents &log;
     RenameRecords &renames;
-    int dep = 0;
+
+    struct CommandContext {
+        int flatten_dep = -1;
+    };
+
+    CommandContext ctx;
 
 
     // recursive descent parsing
@@ -89,23 +94,34 @@ private:
 
     parser::Parslet pars;
 
-    std::vector<std::string> dirchain;
-
-    std::set<ino_t> duplicates;
-
-
-    std::set<std::string> dircreated;
+    std::vector<std::string> dirchain; // the current dirrectory chain (path)
+    std::set<ino_t> duplicates; // file of this content was already created
+    std::set<std::string> dircreated; // created directory paths
 
     void push_rename_file(const std::string &src, uint32_t flags) {
         RenameRecord rec;
         rec.src = src;
-        rec.dst = boost::algorithm::join(dirchain, "/");
+        std::string path;
+        if (ctx.flatten_dep >= 0) {
+            std::vector<std::string> v;
+            for (int i = 0; i < ctx.flatten_dep; i++) {
+                v.push_back(dirchain.at(i));
+            }
+            v.push_back(dirchain.back());
+            path = boost::algorithm::join(v, "/");
+
+        } else {
+            path = boost::algorithm::join(dirchain, "/");
+        }
+
+        rec.dst = path;
         rec.flags = flags;
         renames.push_back(rec);
     }
 
     void push_create_directory() {
         if (dirchain.empty()) return;
+        if (ctx.flatten_dep != -1 && dirchain.size() > (size_t)ctx.flatten_dep) return;
         std::string path;
         path = boost::algorithm::join(dirchain, "/");
         if (dircreated.count(path)) return;

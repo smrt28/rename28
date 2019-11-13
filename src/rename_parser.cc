@@ -43,31 +43,17 @@ void RenameParser::update_context() {
    }
 
    parser::trim(command);
-/*
-   if (command.str() == "numbers") {
-       std::unique_ptr<Transformer> t(new tformer::Numbers(dep));
-       transformers.push_back(std::move(t));
-   } else if (command.str() == "flatten") {
-       std::unique_ptr<Transformer> t(new tformer::Flatten(dep, prefix));
-       transformers.push_back(std::move(t));
-   } else if (command.str() == "keepdups") {
-       keepdups = true;
-   } else if (command.str() == "dropdups") {
-       keepdups = false;
-   } else {
-       RAISE_ERROR("invalid command");
+
+   if (command.str() == "flatten") {
+       if (ctx.flatten_dep != -1)
+           RAISE_ERROR("double flattening");
+       ctx.flatten_dep = dirchain.size();
    }
-   */
 }
 
 bool RenameParser::read_file_or_dir() {
     if (pars.empty() || *pars == '}') return false;
-    /*
-    while (!pars.empty() && *pars == '$') {
-//        update_context(prefix);
-        return true;
-    }
-*/
+    if (*pars == '$') RAISE_ERROR("command must be at the directory beggining");
     std::string filename;
     if (*pars != '#')
         filename = parser::read_escaped_string(pars);
@@ -93,18 +79,26 @@ bool RenameParser::read_file_or_dir() {
 
 void RenameParser::read_dir_content() {
     parser::ltrim(pars);
+
+    CommandContext origctx = ctx;
+
+    // read commands to the commands stack
+    while (!pars.empty() && *pars == '$') {
+        update_context();
+    }
+
     while(read_file_or_dir()) {
         parser::ltrim(pars);
     }
+
+    ctx = origctx;
 }
 
 
 
 void RenameParser::read_dir() {
     pars.expect_char('{');
-    dep++;
     read_dir_content();
-    dep--;
     pars.expect_char('}');
 }
 
@@ -163,7 +157,6 @@ void RenameParser::parse(const std::string &inputfile) {
             std::istreambuf_iterator<char>());
 
     pars = parser::Parslet(str);
-    dep = 0;
     read_dir_content();
 }
 
