@@ -39,6 +39,29 @@ TEST(Parsing, FileNameParser) {
     EXPECT_EQ(fnp.parse(s), "abc_4.xyz");
     }
 
+    {
+    s28::FileNameParser fnp("%n_%3N.%e");
+    std::string s = "abc.xyz";
+    EXPECT_EQ(fnp.parse(s), "abc_001.xyz");
+    EXPECT_EQ(fnp.parse(s), "abc_002.xyz");
+    EXPECT_EQ(fnp.parse(s), "abc_003.xyz");
+    EXPECT_EQ(fnp.parse(s), "abc_004.xyz");
+    }
+
+    {
+    s28::FileNameParser fnp("%un_%3N.%e");
+    std::string s = "abc.xyz";
+    EXPECT_EQ(fnp.parse(s), "ABC_001.xyz");
+    EXPECT_EQ(fnp.parse(s), "ABC_002.xyz");
+    }
+
+    {
+    s28::FileNameParser fnp("%ln_%3N.%le");
+    std::string s = "aBc.xYZ";
+    EXPECT_EQ(fnp.parse(s), "abc_001.xyz");
+    EXPECT_EQ(fnp.parse(s), "abc_002.xyz");
+    }
+
 
     {
     s28::FileNameParser fnp("%n_%N.%e");
