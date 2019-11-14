@@ -322,16 +322,6 @@ bool parse_args(Args &args, int argc, char **argv) {
 #include "filename_parser.h"
 
 int main(int argc, char **argv) {
-
-    s28::FileNameParser fnp("%n_%N.%e");
-    std::cout << "[" << fnp.parse("configlog.asdf.fff") << "]" << std::endl;;
-    std::cout << "[" << fnp.parse("configlog.asdf.fff") << "]" << std::endl;;
-    std::cout << "[" << fnp.parse("configlog.asdf.fff") << "]" << std::endl;;
-    std::cout << "[" << fnp.parse("configlog.asdf.fff") << "]" << std::endl;;
-
-    return 0;
-
-
     Args args;
     try {
         if (!parse_args(args, argc, argv)) return 1;
