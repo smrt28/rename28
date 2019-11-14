@@ -80,7 +80,7 @@ void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
    }
 }
 
-bool RenameParser::read_file_or_dir() {
+bool RenameParser::read_file_or_dir(Context &ctx) {
     if (pars.empty() || *pars == '}') return false;
     if (*pars == '$') RAISE_ERROR("command must be at the directory beggining");
     std::string filename;
@@ -92,12 +92,14 @@ bool RenameParser::read_file_or_dir() {
     switch(*pars) {
         case '{':
             dirchain.push_back(filename);
+            ctx.dirorder++;
             push_create_directory();
             read_dir();
             dirchain.pop_back();
             return true;
         case '#':
             dirchain.push_back(filename);
+            ctx.fileorder++;
             read_file();
             dirchain.pop_back();
             return true;
@@ -116,7 +118,8 @@ void RenameParser::read_dir_content() {
         update_context(revstack);
     }
 
-    while(read_file_or_dir()) {
+    Context ctx;
+    while(read_file_or_dir(ctx)) {
         parser::ltrim(pars);
     }
 

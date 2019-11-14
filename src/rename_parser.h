@@ -69,12 +69,15 @@ private:
     LogEvents &log;
     RenameRecords &renames;
 
-    int file_number = -1;
-
     // recursive descent parsing
     ino_t read_inodes(std::set<ino_t> *inodes);
 
-    bool read_file_or_dir();
+    struct Context {
+        size_t dirorder = 0;
+        size_t fileorder = 0;
+    };
+
+    bool read_file_or_dir(Context &ctx);
     void read_commands();
     void read_dir_content();
     void read_dir();
