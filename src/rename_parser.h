@@ -55,25 +55,25 @@ public:
     typedef std::vector<RenameRecord> RenameRecords;
 
 
-    RenameParser(InodeMap &inomap, std::vector<LogEvent> &log, std::vector<RenameRecord> &renames) :
-        inomap(inomap),
-        log(log),
-        renames(renames)
-    {}
+    RenameParser(InodeMap &inomap, std::vector<LogEvent> &log, std::vector<RenameRecord> &renames);
 
     void parse(const std::string &inputfile);
 
 
 private:
+    std::unique_ptr<DirPathBuilder> dir_path_builder;
+    std::unique_ptr<FilePathBuilder> file_path_builder;
+
+
     const InodeMap &inomap;
     LogEvents &log;
     RenameRecords &renames;
 
-    int flatten_dep = -1;
-
+    int file_number = -1;
 
     // recursive descent parsing
     ino_t read_inodes(std::set<ino_t> *inodes);
+
     bool read_file_or_dir();
     void read_commands();
     void read_dir_content();
@@ -84,42 +84,31 @@ private:
     parser::Parslet pars;
 
     std::vector<std::string> dirchain; // the current dirrectory chain (path)
-    std::set<ino_t> duplicates; // file of this content was already created
-    std::set<std::string> dircreated; // created directory paths
+    std::set<ino_t> duplicates; // set of created file inodes
+    std::set<std::string> dircreated; // already created directory paths
 
     void push_rename_file(const std::string &src, uint32_t flags) {
         RenameRecord rec;
         rec.src = src;
         std::string path;
-
-        size_t pathsize = dirchain.size() - 1;
-        if (flatten_dep != -1) pathsize = flatten_dep ;
-
-        std::vector<std::string> v;
-        for (size_t i = 0; i < pathsize; i++) {
-            v.push_back(dirchain.at(i));
+        if (file_path_builder->build_file_path(dirchain, path)) {
+            rec.dst = path;
+            rec.flags = flags;
+            renames.push_back(rec);
         }
-
-        v.push_back(dirchain.back());
-
-        path = boost::algorithm::join(v, "/");
-
-
-        rec.dst = path;
-        rec.flags = flags;
-        renames.push_back(rec);
     }
 
     void push_create_directory() {
         if (dirchain.empty()) return;
-        if (flatten_dep != -1 && dirchain.size() > (size_t)flatten_dep) return;
         std::string path;
-        path = boost::algorithm::join(dirchain, "/");
-        if (dircreated.count(path)) return;
-        dircreated.insert(path);
-        RenameRecord rec;
-        rec.dst = path;
-        renames.push_back(rec);
+
+        if (dir_path_builder->build_dir_path(dirchain, path)) {
+            if (dircreated.count(path)) return;
+            dircreated.insert(path);
+            RenameRecord rec;
+            rec.dst = path;
+            renames.push_back(rec);
+        }
     }
 
     bool keepdups = false;

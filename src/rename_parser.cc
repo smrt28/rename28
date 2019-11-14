@@ -11,6 +11,19 @@
 
 namespace s28 {
 
+
+RenameParser::RenameParser(InodeMap &inomap, std::vector<LogEvent> &log, std::vector<RenameRecord> &renames) :
+    dir_path_builder(new DirPathBuilder),
+    file_path_builder(new FilePathBuilder),
+    inomap(inomap),
+    log(log),
+    renames(renames)
+{
+
+}
+
+
+
 ino_t RenameParser::read_inodes(std::set<ino_t> *inodes) {
     ino_t firstino = 0;
     for(;;) {
@@ -45,14 +58,24 @@ void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
    parser::trim(command);
 
    if (command.str() == "flatten") {
-       if (flatten_dep != -1)
-           RAISE_ERROR("double flattening");
-       int orig = flatten_dep;
-       revstack.push_back([this, orig]() {
-           this->flatten_dep = orig;
+       DirPathBuilder *dorig = dir_path_builder.release();
+       FilePathBuilder *forigin = file_path_builder.release();
+       dir_path_builder.reset(new DirFlattener(dirchain.size(), dorig));
+       file_path_builder.reset(new FileFlattener(dirchain.size(), forigin));
+
+       revstack.push_back([this, dorig, forigin]() {
+               dir_path_builder.reset(dorig);
+               file_path_builder.reset(forigin);
        });
-       flatten_dep = dirchain.size();
        return;
+   }
+
+   if (command.str() == "numbers") {
+       FilePathBuilder *forig = file_path_builder.release();
+       file_path_builder.reset(new FileNumerator(forig));
+       revstack.push_back([this, forig]() {
+           file_path_builder.reset(forig);
+       });
    }
 }
 
