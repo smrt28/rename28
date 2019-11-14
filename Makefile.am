@@ -15,7 +15,7 @@ rename28_SOURCES = \
 	src/escape.h src/error.h \
 	src/hash.cc src/dir.cc \
 	src/file.cc src/utils.cc \
-	src/rename_parser.cc
+	src/rename_parser.cc src/filename_parser.cc
 
 rename28_CPPFLAGS = -Wall @REMOVE28_CFLAGS@
 rename28_LDFLAGS = @REMOVE28_LIBS@
@@ -24,7 +24,9 @@ rename28_LDFLAGS = @REMOVE28_LIBS@
 test28_CPPFLAGS = -I$(top_srcdir)/gtest/include
 test28_LDADD = gtest/libgtest_main.a gtest/libgtest.a -lpthread -lcrypt
 test28_SOURCES =\
-	src/test.cc src/escape.cc
+	src/test.cc src/escape.cc \
+	src/filename_parser.cc
+
 
 #rename28_LDADD   = -lcrypt
 

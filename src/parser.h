@@ -123,12 +123,13 @@ public:
         return eit[-1];
     }
 
-    bool shift() {
+    int shift() {
         if (it < eit) {
             --eit;
-            return true;
+            return *eit;
         }
-        return false;
+        raise(Error::OVERFLOW);
+        return eof; // not reachable
     }
 
     size_t size() const {

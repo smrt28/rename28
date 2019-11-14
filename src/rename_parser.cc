@@ -76,6 +76,7 @@ void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
        revstack.push_back([this, forig]() {
            file_path_builder.reset(forig);
        });
+       return;
    }
 }
 
