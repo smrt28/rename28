@@ -72,21 +72,12 @@ void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
        return;
    }
 
-   if (cmd == "numbers") {
-       FilePathBuilder *forig = file_path_builder.release();
-       file_path_builder.reset(new FileNumerator(forig));
-       revstack.push_back([this, forig]() {
-           file_path_builder.reset(forig);
-       });
-       return;
-   }
-
    if (cmd == "pattern") {
        std::string pattern = parser::trim(command).str();
-       FilePathBuilder *forigin = file_path_builder.release();
-       file_path_builder.reset(new ApplyPattern(forigin, pattern));
-       revstack.push_back([this, forigin]() {
-               file_path_builder.reset(forigin);
+       FilePathBuilder *forig = file_path_builder.release();
+       file_path_builder.reset(new ApplyPattern(forig, pattern));
+       revstack.push_back([this, forig]() {
+               file_path_builder.reset(forig);
        });
        return;
    }
@@ -107,7 +98,7 @@ bool RenameParser::read_file_or_dir(Context &ctx) {
         case '{':
             dirchain.push_back(filename);
             ctx.dirorder++;
-            push_create_directory();
+            create_directory();
             read_dir();
             dirchain.pop_back();
             return true;
@@ -166,7 +157,7 @@ void RenameParser::read_file() {
             } else {
                 duplicates.insert(ino);
             }
-            push_rename_file(it->second->node->get_path(), flags);
+            rename_file(it->second->node->get_path(), flags);
             found = true;
             break;
         } else {

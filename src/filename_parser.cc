@@ -32,7 +32,8 @@ void check_wildcard_char(char c) {
         case 'e': // extension
         case 'n': // file name
         case 'N': // number
-        case '.': // dot, if it's not a last character
+        case '.': // '.', if it's not last character
+        case '-': // '-', if it's not first character
         case '%':
             break;
         default:
@@ -122,6 +123,7 @@ class StringBuilder {
                 dots = 0;
                 oss << ".";
             }
+            empty = false;
             oss << s;
         }
 
@@ -130,6 +132,7 @@ class StringBuilder {
         }
 
         int dots = 0;
+        bool empty = true;
     private:
         std::ostringstream oss;
 };
@@ -190,6 +193,11 @@ std::string FileNameParser::parse(const std::string &fname) {
                 break;
             case '.':
                 builder.dots ++;
+                break;
+            case '-':
+                if (!builder.empty) {
+                    builder.append("-");
+                }
                 break;
         }
     }

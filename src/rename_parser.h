@@ -90,7 +90,7 @@ private:
     std::set<ino_t> duplicates; // set of created file inodes
     std::set<std::string> dircreated; // already created directory paths
 
-    void push_rename_file(const std::string &src, uint32_t flags) {
+    void rename_file(const std::string &src, uint32_t flags) {
         RenameRecord rec;
         rec.src = src;
         std::string path;
@@ -101,7 +101,7 @@ private:
         }
     }
 
-    void push_create_directory() {
+    void create_directory() {
         if (dirchain.empty()) return;
         std::string path;
 

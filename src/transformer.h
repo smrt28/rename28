@@ -69,20 +69,6 @@ public:
    FileNameParser pattern_parser;
 };
 
-class FileNumerator : public FilePathBuilder {
-public:
-    FileNumerator(FilePathBuilder *parent) : parent(parent) {}
-    bool build_file_path(const DirChain &dirchain, std::string &path) {
-        DirChain v(dirchain.begin(), dirchain.end() - 1);
-        v.push_back(dirchain.back() + "-" + std::to_string(++n));
-        return parent->build_file_path(v, path);
-    }
-
-    FilePathBuilder *parent;
-    int n = 0;
-};
-
-
 } // namespace s28
 
 #endif /* TRRANSFORMER_H */
