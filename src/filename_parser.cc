@@ -51,6 +51,28 @@ std::string set_case(const std::string &s, size_t c) {
     }
 }
 
+class StringBuilder {
+    public:
+        void append(const std::string &s) {
+            if (s.empty()) return;
+            if (dots) {
+                dots = 0;
+                oss << ".";
+            }
+            empty = false;
+            oss << s;
+        }
+
+        std::string str() {
+            return oss.str();
+        }
+
+        int dots = 0;
+        bool empty = true;
+    private:
+        std::ostringstream oss;
+};
+
 } // namespace
 
 // simple patern tokenizer
@@ -72,8 +94,8 @@ FileNameParser::FileNameParser(const std::string &rpat) : rawpatern(rpat) {
 
             m.skip();
             switch(*m) {
-                case 'l':
-                case 'u':
+                case 'l': // lowercase prefix
+                case 'u': // uppercase prefix
                     n = *m;
                     m.skip();
                     break;
@@ -114,32 +136,7 @@ FileNameParser::FileNameParser(const std::string &rpat) : rawpatern(rpat) {
 }
 
 
-namespace {
-class StringBuilder {
-    public:
-        void append(const std::string &s) {
-            if (s.empty()) return;
-            if (dots) {
-                dots = 0;
-                oss << ".";
-            }
-            empty = false;
-            oss << s;
-        }
-
-        std::string str() {
-            return oss.str();
-        }
-
-        int dots = 0;
-        bool empty = true;
-    private:
-        std::ostringstream oss;
-};
-
-}
-
-
+// apply pattern on filename
 std::string FileNameParser::parse(const std::string &fname) {
     parser::Parslet fullname(fname);
     parser::Parslet name = fullname;
@@ -158,7 +155,6 @@ std::string FileNameParser::parse(const std::string &fname) {
     }
 
     StringBuilder builder;
-//    std::ostringstream oss;
 
     // loop tokens
     for (auto &t: patern) {

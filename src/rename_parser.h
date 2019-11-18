@@ -15,6 +15,7 @@
 #include "transformer.h"
 #include "parser.h"
 #include "record.h"
+#include "path_context.h"
 
 namespace s28 {
 
@@ -61,8 +62,9 @@ public:
 
 
 private:
-    std::unique_ptr<DirPathBuilder> dir_path_builder;
-    std::unique_ptr<FilePathBuilder> file_path_builder;
+
+    PathContext dir_context;
+    PathContext file_context;
 
 
     const InodeMap &inomap;
@@ -82,7 +84,7 @@ private:
     void read_dir_content();
     void read_dir();
     void read_file();
-    void update_context(std::vector<std::function<void()>> &revstack);
+    void update_context();
 
     parser::Parslet pars;
 
@@ -94,7 +96,7 @@ private:
         RenameRecord rec;
         rec.src = src;
         std::string path;
-        if (file_path_builder->build_file_path(dirchain, path)) {
+        if (file_context.build(dirchain, path)) {
             rec.dst = path;
             rec.flags = flags;
             renames.push_back(rec);
@@ -105,7 +107,7 @@ private:
         if (dirchain.empty()) return;
         std::string path;
 
-        if (dir_path_builder->build_dir_path(dirchain, path)) {
+        if (dir_context.build(dirchain, path)) {
             if (dircreated.count(path)) return;
             dircreated.insert(path);
             RenameRecord rec;

@@ -122,8 +122,14 @@ std::string Escaper::escape(const std::string &s) {
     std::string rv;
     bool q = false;
 
-    if (std::find_if(s.begin(), s.end(), isspace) != s.end()) {
-        q = true;
+    for (char c: s) {
+        if (isspace(c)) {
+            q = true;
+            break;
+        }
+
+        if (c == '*' || c =='&')
+            q = true;
     }
 
     if (q) rv = "'";

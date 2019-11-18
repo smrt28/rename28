@@ -1,6 +1,9 @@
 #ifndef TRRANSFORMER_H
 #define TRRANSFORMER_H
+#include <vector>
+#include <string>
 
+#include <boost/algorithm/string/join.hpp>
 #include "error.h"
 #include "filename_parser.h"
 namespace s28 {
@@ -8,66 +11,80 @@ namespace s28 {
 typedef std::vector<std::string> DirChain;
 
 
-class DirPathBuilder {
+class PathBuilder {
 public:
-    virtual bool build_dir_path(const DirChain &dirchain, std::string &path) {
-        path = boost::algorithm::join(dirchain, "/");
-        return true;
+    enum Result {
+        SKIP,
+        CHANGED,
+        UNCHANGED
+    };
+
+    virtual ~PathBuilder() {}
+    virtual Result build(const DirChain &dirchain, DirChain &path) {
+        return UNCHANGED;
     }
 };
 
-class FilePathBuilder {
+class FileFlattener : public PathBuilder {
 public:
-    virtual bool build_file_path(const DirChain &dirchain, std::string &path) {
-        path = boost::algorithm::join(dirchain, "/");
-        return true;
-    }
-};
+    FileFlattener(size_t dep) : dep(dep) {}
 
-class FileFlattener : public FilePathBuilder {
-public:
-    FileFlattener(size_t dep, FilePathBuilder *parent) : dep(dep), parent(parent) {}
-
-    bool build_file_path(const DirChain &dirchain, std::string &path) {
+    Result build(const DirChain &dirchain, DirChain &path) override {
         DirChain v(dirchain.begin(), dirchain.begin() + dep);
         v.push_back(dirchain.back());
-        return parent->build_file_path(v, path);
+        std::swap(v, path);
+        return CHANGED;
     }
 
     size_t dep;
-    FilePathBuilder *parent;
 };
 
-class DirFlattener : public DirPathBuilder {
+class DirFlattener : public PathBuilder {
 public:
-    DirFlattener(size_t dep, DirPathBuilder *parent) : dep(dep), parent(parent) {}
+    DirFlattener(size_t dep) : dep(dep) {}
 
-    bool build_dir_path(const DirChain &dirchain, std::string &path) {
-        if (dirchain.size() > dep) return false;
-        return parent->build_dir_path(dirchain, path);
+    Result build(const DirChain &dirchain, DirChain &path) override {
+        if (dirchain.size() > dep) return SKIP;
+        return UNCHANGED;
     }
 
     size_t dep;
-    DirPathBuilder *parent;
 };
 
 
-class ApplyPattern : public FilePathBuilder {
+class ApplyPattern : public PathBuilder {
 public:
-    ApplyPattern(FilePathBuilder *parent, const std::string &pattern) :
-        parent(parent),
+    ApplyPattern(const std::string &pattern) :
         pattern_parser(pattern)
     {}
 
-    bool build_file_path(const DirChain &dirchain, std::string &path) {
+    Result build(const DirChain &dirchain, DirChain &path) override {
         DirChain v(dirchain.begin(), dirchain.end() - 1);
         v.push_back(pattern_parser.parse(dirchain.back()));
-        return parent->build_file_path(v, path);
+        std::swap(v, path);
+        return CHANGED;
     }
 
-   FilePathBuilder *parent;
    FileNameParser pattern_parser;
 };
+
+class Ascii : public PathBuilder {
+public:
+    Result build(const DirChain &dirchain, DirChain &path) override {
+        DirChain v(dirchain.begin(), dirchain.end() - 1);
+
+        std::string s = dirchain.back();
+        for (size_t i = 0; i < s.size(); ++i) {
+            if (isspace(s[i]) || !isprint(s[i])) {
+                s[i] = '_';
+            }
+        }
+        v.push_back(s);
+        std::swap(v, path);
+        return CHANGED;
+    }
+};
+
 
 } // namespace s28
 

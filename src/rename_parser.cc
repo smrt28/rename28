@@ -13,14 +13,10 @@ namespace s28 {
 
 
 RenameParser::RenameParser(InodeMap &inomap, std::vector<LogEvent> &log, std::vector<RenameRecord> &renames) :
-    dir_path_builder(new DirPathBuilder),
-    file_path_builder(new FilePathBuilder),
     inomap(inomap),
     log(log),
     renames(renames)
-{
-
-}
+{}
 
 
 
@@ -40,7 +36,7 @@ ino_t RenameParser::read_inodes(std::set<ino_t> *inodes) {
     return firstino;
 }
 
-void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
+void RenameParser::update_context()
 {
    pars.expect_char('$');
    const char *it = pars.begin();
@@ -60,25 +56,19 @@ void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
    std::string cmd = parser::word(command);
 
    if (cmd == "flatten") {
-       DirPathBuilder *dorig = dir_path_builder.release();
-       FilePathBuilder *forigin = file_path_builder.release();
-       dir_path_builder.reset(new DirFlattener(dirchain.size(), dorig));
-       file_path_builder.reset(new FileFlattener(dirchain.size(), forigin));
-
-       revstack.push_back([this, dorig, forigin]() {
-               dir_path_builder.reset(dorig);
-               file_path_builder.reset(forigin);
-       });
+       dir_context.push(new DirFlattener(dirchain.size()));
+       file_context.push(new FileFlattener(dirchain.size()));
        return;
    }
 
    if (cmd == "pattern") {
        std::string pattern = parser::trim(command).str();
-       FilePathBuilder *forig = file_path_builder.release();
-       file_path_builder.reset(new ApplyPattern(forig, pattern));
-       revstack.push_back([this, forig]() {
-               file_path_builder.reset(forig);
-       });
+       file_context.push(new ApplyPattern(pattern));
+       return;
+   }
+
+   if (cmd == "ascii") {
+       file_context.push(new Ascii());
        return;
    }
 
@@ -116,11 +106,12 @@ bool RenameParser::read_file_or_dir(Context &ctx) {
 void RenameParser::read_dir_content() {
     parser::ltrim(pars);
 
-    std::vector<std::function<void()>> revstack;
+    size_t dsize = dir_context.size();
+    size_t fsize = file_context.size();
 
     // read commands to the commands stack
     while (!pars.empty() && *pars == '$') {
-        update_context(revstack);
+        update_context();
     }
 
     Context ctx;
@@ -128,7 +119,8 @@ void RenameParser::read_dir_content() {
         parser::ltrim(pars);
     }
 
-    for (auto &f: revstack) f();
+    dir_context.pop_to(dsize);
+    file_context.pop_to(fsize);
 }
 
 
