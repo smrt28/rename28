@@ -12,9 +12,8 @@
 namespace s28 {
 
 
-RenameParser::RenameParser(InodeMap &inomap, std::vector<LogEvent> &log, std::vector<RenameRecord> &renames) :
+RenameParser::RenameParser(InodeMap &inomap, std::vector<RenameRecord> &renames) :
     inomap(inomap),
-    log(log),
     renames(renames)
 {}
 
@@ -188,29 +187,5 @@ void RenameParser::parse(const std::string &inputfile) {
     pars = parser::Parslet(str);
     read_dir_content();
 }
-
-
-std::string RenameParser::LogEvent::str() {
-    std::ostringstream oss;
-
-    std::string msg;
-    switch (code) {
-        case NONE:
-            msg = "N/A";
-            break;
-        case MISSING_INODE:
-            oss << "warn: missing inode; path=" << path << "; inode=" << inode;
-            break;
-        case UNKNOWN_SOURCE:
-            oss << "err: unknown source; path=" << path;
-            break;
-        default:
-            oss << "err: not defined";
-    }
-
-
-    return oss.str();
-}
-
 
 } // namespace s28

@@ -48,5 +48,5 @@ public:
     }
 };
 
-}
+} // namespace s28
 #endif

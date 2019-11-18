@@ -251,17 +251,18 @@ int apply_rename(const Args &args) {
         inomap[r->inode] = r.get();
     }
 
-    s28::RenameParser::LogEvents logs;
     s28::RenameParser::RenameRecords renames;
 
-    s28::RenameParser rp(inomap, logs, renames);
+    s28::RenameParser rp(inomap, renames);
     rp.parse(args.renamefile);
 
     bool ok = true;
+    /*
     for (auto &log: logs) {
         std::cerr << log.str() << std::endl;
         ok = false;
     }
+    */
 
     if (!ok && !args.force) return 1;
 
