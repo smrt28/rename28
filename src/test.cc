@@ -69,4 +69,11 @@ TEST(Parsing, FileNameParser) {
     EXPECT_EQ(fnp.parse(s), "abcxyz_1.");
     EXPECT_EQ(fnp.parse(s), "abcxyz_2.");
     }
+
+    {
+    s28::FileNameParser fnp("%n_%N%.%e");
+    std::string s = "abcxyz";
+    EXPECT_EQ(fnp.parse(s), "abcxyz_1");
+    EXPECT_EQ(fnp.parse(s), "abcxyz_2");
+    }
 }

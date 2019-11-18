@@ -162,9 +162,10 @@ inline void rtrim(Parslet &p) {
 }
 
 
-inline void trim(Parslet &p) {
+inline Parslet trim(Parslet &p) {
     ltrim(p);
     rtrim(p);
+    return p;
 }
 
 inline std::string number(parser::Parslet &p) {
@@ -274,6 +275,14 @@ inline std::string read_escaped_string(parser::Parslet &p) {
     }
     Escaper es;
     return es.unescape(parser::Parslet(orig.begin(), p.begin()).str());
+}
+
+inline std::string word(parser::Parslet &p) {
+    std::string rv;
+    while (!p.empty() && ::isalnum(*p)) {
+        rv += p.next();
+    }
+    return rv;
 }
 
 } // nemaspace parser

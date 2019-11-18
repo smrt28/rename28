@@ -57,7 +57,9 @@ void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
 
    parser::trim(command);
 
-   if (command.str() == "flatten") {
+   std::string cmd = parser::word(command);
+
+   if (cmd == "flatten") {
        DirPathBuilder *dorig = dir_path_builder.release();
        FilePathBuilder *forigin = file_path_builder.release();
        dir_path_builder.reset(new DirFlattener(dirchain.size(), dorig));
@@ -70,7 +72,7 @@ void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
        return;
    }
 
-   if (command.str() == "numbers") {
+   if (cmd == "numbers") {
        FilePathBuilder *forig = file_path_builder.release();
        file_path_builder.reset(new FileNumerator(forig));
        revstack.push_back([this, forig]() {
@@ -78,6 +80,18 @@ void RenameParser::update_context(std::vector<std::function<void()>> &revstack)
        });
        return;
    }
+
+   if (cmd == "pattern") {
+       std::string pattern = parser::trim(command).str();
+       FilePathBuilder *forigin = file_path_builder.release();
+       file_path_builder.reset(new ApplyPattern(forigin, pattern));
+       revstack.push_back([this, forigin]() {
+               file_path_builder.reset(forigin);
+       });
+       return;
+   }
+
+   RAISE_ERROR("unknown command: " << cmd);
 }
 
 bool RenameParser::read_file_or_dir(Context &ctx) {

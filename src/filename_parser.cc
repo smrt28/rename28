@@ -32,8 +32,7 @@ void check_wildcard_char(char c) {
         case 'e': // extension
         case 'n': // file name
         case 'N': // number
-        case 'u': // uppercase
-        case 'l': // lowercase
+        case '.': // dot, if it's not a last character
         case '%':
             break;
         default:
@@ -114,6 +113,29 @@ FileNameParser::FileNameParser(const std::string &rpat) : rawpatern(rpat) {
 }
 
 
+namespace {
+class StringBuilder {
+    public:
+        void append(const std::string &s) {
+            if (s.empty()) return;
+            if (dots) {
+                dots = 0;
+                oss << ".";
+            }
+            oss << s;
+        }
+
+        std::string str() {
+            return oss.str();
+        }
+
+        int dots = 0;
+    private:
+        std::ostringstream oss;
+};
+
+}
+
 
 std::string FileNameParser::parse(const std::string &fname) {
     parser::Parslet fullname(fname);
@@ -132,26 +154,27 @@ std::string FileNameParser::parse(const std::string &fname) {
         ext = parser::Parslet(name.end() + 1, fullname.end());
     }
 
-    std::ostringstream oss;
+    StringBuilder builder;
+//    std::ostringstream oss;
 
     // loop tokens
     for (auto &t: patern) {
         // handle const string token
         if (t.type == TOKEN_STRING) {
-            oss << std::string(t.str.it, t.str.eit);
+            builder.append( std::string(t.str.it, t.str.eit));
             continue;
         }
 
         // handle wildcard
         switch(t.wld.c) {
             case '%':
-                oss << "%";
+                builder.append("%");
                 break;
             case 'e':
-                oss << set_case(ext.str(), t.wld.arg);
+                builder.append(set_case(ext.str(), t.wld.arg));
                 break;
             case 'n':
-                oss << set_case(name.str(), t.wld.arg);
+                builder.append(set_case(name.str(), t.wld.arg));
                 break;
             case 'N':
                 {
@@ -159,16 +182,19 @@ std::string FileNameParser::parse(const std::string &fname) {
                     size_t x = std::min(t.wld.arg, size_t(10));
                     if (x > s.size()) {
                         for (size_t i = 0; i < x - s.size(); i++ ) {
-                            oss << "0";
+                            builder.append("0");
                         }
                     }
-                    oss << s;
+                    builder.append(s);
                 }
+                break;
+            case '.':
+                builder.dots ++;
                 break;
         }
     }
 
-    return oss.str();
+    return builder.str();
 }
 
 

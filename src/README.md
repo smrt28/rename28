@@ -5,6 +5,7 @@ File patterns:
 %e = ext
 %% = '%' character
 %N = fileorder
+%. = '.' character if it's not the last in the string
 
 Prefixes:
 =========
