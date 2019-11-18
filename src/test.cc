@@ -64,14 +64,14 @@ TEST(Parsing, FileNameParser) {
 
 
     {
-    s28::FileNameParser fnp("%n_%N.%e");
+    s28::FileNameParser fnp("%n%-%N.%e");
     std::string s = "abcxyz";
-    EXPECT_EQ(fnp.parse(s), "abcxyz_1.");
-    EXPECT_EQ(fnp.parse(s), "abcxyz_2.");
+    EXPECT_EQ(fnp.parse(s), "abcxyz-1.");
+    EXPECT_EQ(fnp.parse(s), "abcxyz-2.");
     }
 
     {
-    s28::FileNameParser fnp("%n_%N%.%e");
+    s28::FileNameParser fnp("%-%n_%N%.%e");
     std::string s = "abcxyz";
     EXPECT_EQ(fnp.parse(s), "abcxyz_1");
     EXPECT_EQ(fnp.parse(s), "abcxyz_2");
