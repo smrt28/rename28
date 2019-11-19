@@ -14,6 +14,8 @@ TEST(Parsing, Escape) {
 
     Escaper es;
 
+    EXPECT_TRUE(check(es,"./Blahopřeji'-अभिनंदन-мекунем-恭喜啦"));
+
     EXPECT_TRUE(check(es, "asb\xF1" "1\"  g"));
     EXPECT_TRUE(check(es, ""));
     EXPECT_TRUE(check(es, "a"));

@@ -107,8 +107,8 @@ void Escaper::escchar(char c, char *out, bool qu) {
         unsigned char i = c;
         out[0] = '\\';
         out[1] = 'x';
-        out[2] += hex[i >> 4];
-        out[3] += hex[i & 0xf];
+        out[2] = hex[i >> 4];
+        out[3] = hex[i & 0xf];
         out[4] = 0;
         return;
     }
