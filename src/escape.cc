@@ -13,6 +13,8 @@
 #include "error.h"
 #include "escape.h"
 #include "string.h"
+
+#include "utf8.h"
 namespace s28 {
 
 namespace {
@@ -46,7 +48,39 @@ int hex2int(char c) {
     RAISE_ERROR("hex2int failed");
 }
 
+bool is_ctl(uint32_t code) {
+    // https://en.wikipedia.org/wiki/C0_and_C1_control_codes
+    if (code < 0x20 ||
+            (code >= 0x80 && code <= 0x9f)) return true;
+    return false;
+}
+
+
 } // namespace
+
+
+std::string shellescape(const std::string &s) {
+    std::vector<unsigned short> utf16line;
+    auto end_it = utf8::find_invalid(s.begin(), s.end());
+    if (end_it != s.end()) {
+        RAISE_ERROR("Invalid UTF-8 encoding detected");
+    }
+
+    utf8::utf8to16(s.begin(), end_it, std::back_inserter(utf16line));
+
+    std::vector<unsigned short> utf16rv;
+    for (unsigned short c: utf16line) {
+        if (is_ctl(c)) {
+            RAISE_ERROR("control character detected");
+        }
+        utf16rv.push_back(c);
+    }
+
+    std::string rv;
+    utf8::utf16to8(utf16rv.begin(), utf16rv.end(), std::back_inserter(rv));
+    return rv;
+}
+
 
 std::string base26encode(uint32_t n, int align) {
     static const char *abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";

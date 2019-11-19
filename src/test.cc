@@ -3,6 +3,7 @@
 #include "gtest/gtest.h"
 #include "escape.h"
 #include "filename_parser.h"
+#include "utf8.h"
 
 bool check(s28::Escaper &es, const std::string &s) {
     return (es.unescape(es.escape(s)) == s);
@@ -27,6 +28,11 @@ TEST(Parsing, Escape) {
     EXPECT_TRUE(check(es, "aasfg'as\\dgagagdasg   # ASDFASDF#ASDFbc"));
     EXPECT_TRUE(check(es, "\t\r\n \"\'"));
     EXPECT_TRUE(check(es, "\t\r\n \\xFF\\xF0\"\'"));
+
+
+    std::string text = "今天周五123 abc@#$%(^&*(zA9";
+
+    EXPECT_EQ(s28::shellescape(text), text);
 }
 
 
@@ -64,6 +70,7 @@ TEST(Parsing, FileNameParser) {
     EXPECT_EQ(fnp.parse(s), "abc_002.xyz");
     }
 
+    
 
     {
     s28::FileNameParser fnp("%n%-%N.%e");
