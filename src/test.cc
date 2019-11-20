@@ -7,7 +7,7 @@
 #include "utf8.h"
 
 bool check(s28::Escaper &es, const std::string &s) {
-    return (es.unescape(es.escape(s)) == s);
+    return (s28::shellunescape(es.escape(s)) == s);
 }
 
 
@@ -17,18 +17,17 @@ TEST(Parsing, Escape) {
     Escaper es;
 
     EXPECT_TRUE(check(es,"./Blahopřeji'-अभिनंदन-мекунем-恭喜啦"));
-    EXPECT_TRUE(check(es, "asb\xF1" "1\"  g"));
     EXPECT_TRUE(check(es, ""));
     EXPECT_TRUE(check(es, "a"));
     EXPECT_TRUE(check(es, "{a}"));
+    EXPECT_TRUE(check(es, "${a}"));
     EXPECT_TRUE(check(es, "''"));
     EXPECT_TRUE(check(es, "''c'''"));
-    EXPECT_TRUE(check(es, "ab"));
+    EXPECT_TRUE(check(es, "ab#$a"));
     EXPECT_TRUE(check(es, "abc"));
-    EXPECT_TRUE(check(es, "aasfg'as\\dgagagdasg   # ASDFASDF#ASDFbc"));
-    EXPECT_TRUE(check(es, "\t\r\n \"\'"));
-    EXPECT_TRUE(check(es, "\t\r\n \\xFF\\xF0\"\'"));
 
+    EXPECT_EQ(s28::shellunescape("\\ \\$")," $");
+    EXPECT_EQ(s28::shellunescape("\\a"),"a");
 
     std::string text = "今天周五123 abc@#$%(^&*(zA9";
     EXPECT_EQ(s28::shellescape(text), "\"今天周五123 abc@#\\$%(^&*(zA9\"");
@@ -51,6 +50,7 @@ TEST(Parsing, Escape) {
     EXPECT_THROW(s28::shellescape("\t"), std::exception);
     EXPECT_THROW(s28::shellescape("\n"), std::exception);
     EXPECT_THROW(s28::shellescape("\r"), std::exception);
+    EXPECT_THROW(s28::shellunescape("aaa\\"), std::exception);
 }
 
 
@@ -118,6 +118,7 @@ TEST(Parsing, Parslet) {
     parser::Parslet p(text);
 
     while (!p.empty()) {
+        p.next_utf();
     //    std::cout << p.next_utf() << std::endl;
     }
 }

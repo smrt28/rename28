@@ -257,25 +257,19 @@ int apply_rename(const Args &args) {
     rp.parse(args.renamefile);
 
     bool ok = true;
-    /*
-    for (auto &log: logs) {
-        std::cerr << log.str() << std::endl;
-        ok = false;
-    }
-    */
 
     if (!ok && !args.force) return 1;
 
     for (auto &rename: renames) {
         if (rename.src.empty()) {
-            std::cout << "mkdir -p " << args.prefix  << s28::shellescape(rename.dst) << std::endl;
+            std::cout << "mkdir -p " << s28::shellescape(args.prefix + rename.dst) << std::endl;
         } else {
             if ((rename.flags & s28::RenameParser::RenameRecord::DUPLICATE)
                     && !(rename.flags & s28::RenameParser::RenameRecord::KEEP)) {
                 std::cout << "# ";
             }
-            std::cout << "ln " << s28::shellescape(rename.src) << " " <<
-                  args.prefix << s28::shellescape(rename.dst) << std::endl;
+            std::cout << "ln " << s28::shellescape(rename.src) << " "
+                  << s28::shellescape(args.prefix + rename.dst) << std::endl;
         }
     }
 

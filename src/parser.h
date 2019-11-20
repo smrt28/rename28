@@ -254,33 +254,39 @@ inline std::pair<std::string, std::string> eq(Parslet &p) {
 
 inline std::string read_escaped_string(parser::Parslet &p) {
     parser::ltrim(p);
-    parser::Parslet orig = p;
 
-    if (*p == '\'') {
-        p.skip();
-        while (*p != '\'') {
-            if (p.next() == '\\') {
-                if (p.next() == 'x') {
-                    p.skip();
-                }
-                p.skip();
-                continue;
-            }
-        }
-        p.skip();
+    if (p.empty()) return "";
+
+    parser::Parslet orig = p;
+    uint32_t c = p.next_utf();
+    bool quoted = false;
+    if (c == '"') {
+        quoted = true;
     } else {
-        while (!isspace(*p)) {
-            if (p.next() == '\\') {
-                if (p.next() == 'x') {
-                    p.skip();
-                }
-                p.skip();
-                continue;
+        p = orig;
+    }
+
+    std::vector<uint32_t> v;
+    for (;;) {
+        if (p.empty() && !quoted) {
+            break;
+        }
+        c = p.next_utf();
+        if (c == '\\') {
+            c = p.next_utf();
+        } else {
+            if (quoted) {
+                if (c == '"') break;
+            } else {
+                if (c == ' ') break;
             }
         }
+        v.push_back(c);
     }
-    Escaper es;
-    return es.unescape(parser::Parslet(orig.begin(), p.begin()).str());
+
+    std::string rv;
+    utf8::utf16to8(v.begin(), v.end(), std::back_inserter(rv));
+    return rv;
 }
 
 inline std::string word(parser::Parslet &p) {
