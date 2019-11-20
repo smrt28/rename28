@@ -3,6 +3,7 @@
 #include "gtest/gtest.h"
 #include "escape.h"
 #include "filename_parser.h"
+#include "parser.h"
 #include "utf8.h"
 
 bool check(s28::Escaper &es, const std::string &s) {
@@ -16,7 +17,6 @@ TEST(Parsing, Escape) {
     Escaper es;
 
     EXPECT_TRUE(check(es,"./Blahopřeji'-अभिनंदन-мекунем-恭喜啦"));
-
     EXPECT_TRUE(check(es, "asb\xF1" "1\"  g"));
     EXPECT_TRUE(check(es, ""));
     EXPECT_TRUE(check(es, "a"));
@@ -104,3 +104,21 @@ TEST(Parsing, FileNameParser) {
     EXPECT_EQ(fnp.parse(s), "abcxyz_2");
     }
 }
+
+
+TEST(Parsing, Parslet) {
+    using namespace s28;
+    std::string text = "今天周五123 abc@#$%(^&*(zB9";
+
+
+    uint32_t cp = 0;
+    const char * it = text.c_str();
+    const char * eit = text.c_str() + text.size();
+
+    parser::Parslet p(text);
+
+    while (!p.empty()) {
+    //    std::cout << p.next_utf() << std::endl;
+    }
+}
+

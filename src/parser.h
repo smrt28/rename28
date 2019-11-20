@@ -6,6 +6,7 @@
 
 #include "error.h"
 #include "escape.h"
+#include "utf8.h"
 
 namespace s28 {
 namespace parser {
@@ -54,6 +55,11 @@ public:
 
     const char * begin() const { return it; }
     const char * end() const { return eit; }
+
+    uint32_t next_utf() {
+        if (it >= eit) raise(Error::RANGE);
+        return utf8::next(it, eit);
+    }
 
     int operator[](ssize_t i) const {
         const char *c;
