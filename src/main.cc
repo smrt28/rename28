@@ -266,17 +266,16 @@ int apply_rename(const Args &args) {
 
     if (!ok && !args.force) return 1;
 
-    s28::Escaper es;
     for (auto &rename: renames) {
         if (rename.src.empty()) {
-            std::cout << "mkdir -p " << args.prefix  << es.escape(rename.dst) << std::endl;
+            std::cout << "mkdir -p " << args.prefix  << s28::shellescape(rename.dst) << std::endl;
         } else {
             if ((rename.flags & s28::RenameParser::RenameRecord::DUPLICATE)
                     && !(rename.flags & s28::RenameParser::RenameRecord::KEEP)) {
                 std::cout << "# ";
             }
-            std::cout << "ln " << es.escape(rename.src) << " " <<
-                  args.prefix << es.escape(rename.dst) << std::endl;
+            std::cout << "ln " << s28::shellescape(rename.src) << " " <<
+                  args.prefix << s28::shellescape(rename.dst) << std::endl;
         }
     }
 

@@ -31,8 +31,26 @@ TEST(Parsing, Escape) {
 
 
     std::string text = "今天周五123 abc@#$%(^&*(zA9";
+    EXPECT_EQ(s28::shellescape(text), "\"今天周五123 abc@#\\$%(^&*(zA9\"");
 
+    text = "sabdHVBJF42378y234987!@#%^*";
     EXPECT_EQ(s28::shellescape(text), text);
+
+    text = "sabdHVBJF4237&8y234987!@#%^*"; // & causes quotes
+    EXPECT_EQ(s28::shellescape(text), std::string("\"") + text + "\"");
+
+    text = "sabdHVBJ'F4237"; // ' causes quotes
+    EXPECT_EQ(s28::shellescape(text), std::string("\"") + text + "\"");
+
+    text = "sabdHVBJF4237";
+    EXPECT_EQ(s28::shellescape(text), text);
+
+    text = "sabdHVB\\JF4237";
+    EXPECT_EQ(s28::shellescape(text), "sabdHVB\\\\JF4237");
+
+    EXPECT_THROW(s28::shellescape("\t"), std::exception);
+    EXPECT_THROW(s28::shellescape("\n"), std::exception);
+    EXPECT_THROW(s28::shellescape("\r"), std::exception);
 }
 
 

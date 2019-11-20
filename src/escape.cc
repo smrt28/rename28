@@ -9,7 +9,7 @@
 #include <memory>
 #include <sstream>
 #include <algorithm>
-
+#include <deque>
 #include "error.h"
 #include "escape.h"
 #include "string.h"
@@ -68,12 +68,24 @@ std::string shellescape(const std::string &s) {
 
     utf8::utf8to16(s.begin(), end_it, std::back_inserter(utf16line));
 
-    std::vector<unsigned short> utf16rv;
+    std::deque<unsigned short> utf16rv;
+    bool need_quotes = false;
     for (unsigned short c: utf16line) {
         if (is_ctl(c)) {
             RAISE_ERROR("control character detected");
         }
+
+        if (c == '"' || c == '$' || c == '\\') {
+            utf16rv.push_back('\\');
+        }
+        if (c == ' ' || c == '&' || c == '\'') need_quotes = true;
+
         utf16rv.push_back(c);
+    }
+
+    if (need_quotes) {
+        utf16rv.push_front('"');
+        utf16rv.push_back('"');
     }
 
     std::string rv;
