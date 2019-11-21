@@ -81,8 +81,6 @@ bool RenameParser::read_file_or_dir(Context &ctx) {
     if (*pars != '#')
         filename = parser::read_escaped_string(pars);
 
-    // std::cerr << "filenam=[" <<  filename << "]" << std::endl;
-
     parser::ltrim(pars);
 
     switch(*pars) {
@@ -154,22 +152,11 @@ void RenameParser::read_file() {
             found = true;
             break;
         } else {
-            /*
-            LogEvent l;
-            l.inode = ino;
-            l.path = path;
-            l.code = LogEvent::Code::MISSING_INODE;
-            log.push_back(l);
-            */
+            // inode not found
         }
     }
     if (!found) {
-        /*
-        LogEvent l;
-        l.path = path;
-        l.code = LogEvent::Code::UNKNOWN_SOURCE;
-        log.push_back(l);
-        */
+        // cant copy the file which is not in repo
     }
     while (!pars.empty() && *pars != '\n' && *pars != ';') pars.skip();
     pars.skip();
