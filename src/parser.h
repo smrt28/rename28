@@ -10,6 +10,16 @@
 
 namespace s28 {
 namespace parser {
+    class Parslet;
+}
+}
+
+namespace utf8 {
+    inline uint32_t next(s28::parser::Parslet &p);
+}
+
+namespace s28 {
+namespace parser {
 
 class Error : public s28::Error {
     public:
@@ -55,11 +65,6 @@ public:
 
     const char * begin() const { return it; }
     const char * end() const { return eit; }
-
-    uint32_t next_utf() {
-        if (it >= eit) raise(Error::RANGE);
-        return utf8::next(it, eit);
-    }
 
     int operator[](ssize_t i) const {
         const char *c;
@@ -145,8 +150,6 @@ public:
 
     bool empty() const { return it == eit; }
 
-
-private:
     void raise(Error::Code_t code) const {
         throw Error(code);
     }
@@ -258,7 +261,7 @@ inline std::string read_escaped_string(parser::Parslet &p) {
     if (p.empty()) return "";
 
     parser::Parslet orig = p;
-    uint32_t c = p.next_utf();
+    uint32_t c = utf8::next(p);
     bool quoted = false;
     if (c == '"') {
         quoted = true;
@@ -271,9 +274,9 @@ inline std::string read_escaped_string(parser::Parslet &p) {
         if (p.empty() && !quoted) {
             break;
         }
-        c = p.next_utf();
+        c = utf8::next(p);
         if (c == '\\') {
-            c = p.next_utf();
+            c = utf8::next(p);
         } else {
             if (quoted) {
                 if (c == '"') break;
@@ -299,5 +302,15 @@ inline std::string word(parser::Parslet &p) {
 
 } // nemaspace parser
 } // namespace s28
+
+
+namespace utf8 {
+
+inline uint32_t next(s28::parser::Parslet &p) {
+    if (p.it >= p.eit) p.raise(s28::parser::Error::RANGE);
+    return utf8::next(p.it, p.eit);
+}
+
+}
 
 #endif /* SRC_PARSER_H */

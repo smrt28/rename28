@@ -88,8 +88,6 @@ TEST(Parsing, FileNameParser) {
     EXPECT_EQ(fnp.parse(s), "abc_002.xyz");
     }
 
-    
-
     {
     s28::FileNameParser fnp("%n%-%N.%e");
     std::string s = "abcxyz";
@@ -106,20 +104,35 @@ TEST(Parsing, FileNameParser) {
 }
 
 
-TEST(Parsing, Parslet) {
+TEST(Parsing, utf8) {
     using namespace s28;
     std::string text = "今天周五123 abc@#$%(^&*(zB9";
 
-
-    uint32_t cp = 0;
     const char * it = text.c_str();
     const char * eit = text.c_str() + text.size();
-
+    uint32_t cp = 0;
     parser::Parslet p(text);
-
     while (!p.empty()) {
-        p.next_utf();
-    //    std::cout << p.next_utf() << std::endl;
+        cp *= 7691;
+        cp += utf8::next(p);
     }
+    EXPECT_EQ(cp, 2334994564); // checksum
 }
+
+TEST(Parsing, Parslet) {
+    using namespace s28;
+
+    std::string text = "12345";
+    parser::Parslet p(text);
+    for (int i = 0; i < text.size(); ++i) {
+        EXPECT_EQ(p[i], '1' + i);
+    }
+    EXPECT_EQ(p[-1], '5');
+    EXPECT_EQ(p[-2], '4');
+    EXPECT_EQ(p[6], -1);
+    EXPECT_EQ(p[7], -1);
+    EXPECT_EQ(p[100], -1);
+    EXPECT_EQ(p.str(), text);
+}
+
 

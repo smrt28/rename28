@@ -37,7 +37,6 @@
 
 namespace s28 {
 
-
 namespace aux {
 template<typename CB>
 class Collector : public Traverse {
@@ -55,7 +54,15 @@ private:
 
 class Progress {
 public:
+
     virtual void tick(size_t n, size_t total) {}
+    virtual void on_event(const std::string &message, int code) {
+        std::cerr << "event::" << prefix << "[" << code << "]: " << message << std::endl;
+    }
+
+    Progress & set_prefix(const std::string &prefix) { this->prefix = prefix; return *this; }
+private:
+    std::string prefix;
 };
 
 template<typename CB>
@@ -87,8 +94,13 @@ void stat(RECORDS &records, Progress &progress) {
         progress.tick(++cnt, records.size());
         struct stat stt;
         std::string path = rec->node->get_path();
-        if (::stat(path.c_str(), &stt) == -1) {
+        if (::lstat(path.c_str(), &stt) == -1) {
             RAISE_ERROR("stat failed; file=" << rec->node->get_path());
+        }
+        if ((stt.st_mode & S_IFMT) != S_IFREG && (stt.st_mode & S_IFMT) != S_IFDIR) {
+            std::ostringstream oss;
+            oss << "not file or directory: " << rec->node->get_path();
+            progress.on_event(oss.str(), 1);
         }
         rec->inode = stt.st_ino;
     }
@@ -191,9 +203,9 @@ int search_rename_repo(const Args &args) {
     d.traverse_children(rb);
 
     s28::Progress progress;
-    s28::collector::stat(records, progress);
-    s28::collector::hash(records, progress);
-    s28::collector::group_duplicates(records, progress);
+    s28::collector::stat(records, progress.set_prefix("stat"));
+    s28::collector::hash(records, progress.set_prefix("hash"));
+    s28::collector::group_duplicates(records, progress.set_prefix("duplicates"));
 
     s28::Escaper es;
 
@@ -244,7 +256,7 @@ int apply_rename(const Args &args) {
 
 
     s28::Progress progress;
-    s28::collector::stat(records, progress);
+    s28::collector::stat(records, progress.set_prefix("stat"));
 
     s28::RenameParser::InodeMap inomap;
     for (auto &r: records) {

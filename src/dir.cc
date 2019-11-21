@@ -58,7 +58,7 @@ void Dir::build(Config &config) {
                 children.push_back(std::move(node));
                 break;
             }
-            case DT_REG: {
+            default: {
                 std::unique_ptr<File> node(new File(config, dname, this));
                 children.push_back(std::move(node));
                 break;
