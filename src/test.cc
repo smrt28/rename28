@@ -6,25 +6,22 @@
 #include "parser.h"
 #include "utf8.h"
 
-bool check(s28::Escaper &es, const std::string &s) {
-    return (s28::shellunescape(es.escape(s)) == s);
+bool check(const std::string &s) {
+    return (s28::shellunescape(s28::shellescape(s)) == s);
 }
 
 
 TEST(Parsing, Escape) {
     using namespace s28;
-
-    Escaper es;
-
-    EXPECT_TRUE(check(es,"./Blahopřeji'-अभिनंदन-мекунем-恭喜啦"));
-    EXPECT_TRUE(check(es, ""));
-    EXPECT_TRUE(check(es, "a"));
-    EXPECT_TRUE(check(es, "{a}"));
-    EXPECT_TRUE(check(es, "${a}"));
-    EXPECT_TRUE(check(es, "''"));
-    EXPECT_TRUE(check(es, "''c'''"));
-    EXPECT_TRUE(check(es, "ab#$a"));
-    EXPECT_TRUE(check(es, "abc"));
+    EXPECT_TRUE(check("./Blahopřeji'-अभिनंदन-мекунем-恭喜啦"));
+    EXPECT_TRUE(check(""));
+    EXPECT_TRUE(check("a"));
+    EXPECT_TRUE(check("{a}"));
+    EXPECT_TRUE(check("${a}"));
+    EXPECT_TRUE(check("''"));
+    EXPECT_TRUE(check("''c'''"));
+    EXPECT_TRUE(check("ab#$a"));
+    EXPECT_TRUE(check("abc"));
 
     EXPECT_EQ(s28::shellunescape("\\ \\$")," $");
     EXPECT_EQ(s28::shellunescape("\\a"),"a");
@@ -135,4 +132,16 @@ TEST(Parsing, Parslet) {
     EXPECT_EQ(p.str(), text);
 }
 
+/*
+TEST(Parsing, TotalEscape) {
+    using namespace s28;
+    std::ostringstream oss;
+    std::string s;
 
+    for (int i = 1; i < 256; ++i) {
+        oss << (char)i;
+    }
+
+    std::cout << shellescape(oss.str(), true) << std::endl;
+}
+*/

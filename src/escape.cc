@@ -59,7 +59,7 @@ bool is_ctl(uint32_t code) {
 } // namespace
 
 
-std::string shellescape(const std::string &s) {
+std::string shell_soft_escape(const std::string &s) {
     std::vector<unsigned short> utf16line;
     auto end_it = utf8::find_invalid(s.begin(), s.end());
     if (end_it != s.end()) {
@@ -75,7 +75,7 @@ std::string shellescape(const std::string &s) {
             RAISE_ERROR("control character detected");
         }
 
-        if (c == '"' || c == '$' || c == '\\') {
+        if (c == '"' || c == '$' || c == '\\' || c == '`') {
             utf16rv.push_back('\\');
         }
         if (c == ' ' || c == '&' || c == '\'') need_quotes = true;
@@ -93,6 +93,82 @@ std::string shellescape(const std::string &s) {
     return rv;
 }
 
+
+namespace {
+void escape_mess(std::vector<char> &mess, std::vector<char> &rv) {
+    static const char * shellprintf = "$(printf '";
+    static const char *abc = "0123456789ABCDEF";
+
+    if (mess.empty()) return;
+    for (const char *ch = shellprintf;*ch; ++ch) rv.push_back(*ch);
+
+    for (char c: mess) {
+        rv.push_back('\\');
+        rv.push_back('x');
+        rv.push_back(abc[(uint8_t)c >> 4]);
+        rv.push_back(abc[(uint8_t)c & 0xf]);
+    }
+
+    rv.push_back('\'');
+    rv.push_back(')');
+    mess.clear();
+}
+
+bool is_hardened(const std::string &s) {
+    if (s.size() < 3) return false;
+    if (s[0] != '"') return false;
+    if (s.back() != '"') return false;
+
+
+    return true;
+}
+
+}
+
+std::string shell_hard_escape(const std::string &s) {
+    std::vector<char> rv;
+    rv.push_back('"');
+
+    std::vector<char> mess;
+    for (char c: s) {
+        if (!isprint(c)) {
+            mess.push_back(c);
+            continue;
+        } else {
+            if (!mess.empty()) {
+                escape_mess(mess, rv);
+            }
+        }
+        switch(c) {
+            case '`':
+            case '"':
+            case '$':
+                rv.push_back('\\');
+                rv.push_back(c);
+                break;
+            default:
+                rv.push_back(c);
+                break;
+        }
+    }
+
+    escape_mess(mess, rv);
+    rv.push_back('"');
+    return std::string(rv.begin(), rv.end());
+
+}
+
+std::string shellescape(const std::string &s, bool hardened) {
+    if (hardened) {
+        try
+        {
+            return shell_soft_escape(s);
+        } catch(...) {
+            return shell_hard_escape(s);
+        }
+    }
+    return shell_soft_escape(s);
+}
 
 std::string shellunescape(const std::string &s) {
     parser::Parslet p(s);
@@ -129,49 +205,6 @@ std::string str_align(const std::string s, size_t len) {
     }
 
     return rv;
-}
-
-
-void Escaper::escchar(char c, char *out, bool qu) {
-    static const char *hex = "0123456789ABCDEF";
-    switch(c) {
-        case '\n': out[0] = '\\'; out[1] = 'n'; out[2] = 0; return;
-        case '\r': out[0] = '\\'; out[1] = 'r'; out[2] = 0; return;
-        case '\t': out[0] = '\\'; out[1] = 't'; out[2] = 0; return;
-        case '\\': out[0] = '\\'; out[1] = '\\'; out[2] = 0; return;
-    }
-
-    if (!qu) {
-        switch(c) {
-            case '{': out[0] = '\\'; out[1] = '{'; out[2] = 0; return;
-            case '}': out[0] = '\\'; out[1] = '}'; out[2] = 0; return;
-            case ' ': out[0] = '\\'; out[1] = ' '; out[2] = 0; return;
-            case '#': out[0] = '\\'; out[1] = '#'; out[2] = 0; return;
-            case '$': out[0] = '\\'; out[1] = '$'; out[2] = 0; return;
-        }
-    }
-
-    if (c == '\'') {
-        out[0] = '\\'; out[1] = '\''; out[2] = 0; return;
-    }
-
-    if (!isprint(c)) {
-        unsigned char i = c;
-        out[0] = '\\';
-        out[1] = 'x';
-        out[2] = hex[i >> 4];
-        out[3] = hex[i & 0xf];
-        out[4] = 0;
-        return;
-    }
-
-    out[0] = c;
-    out[1] = 0;
-}
-
-
-std::string Escaper::escape(const std::string &s) {
-    return shellescape(s);
 }
 
 

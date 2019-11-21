@@ -5,15 +5,13 @@
 
 namespace s28 {
 
-class Escaper {
-public:
-    std::string escape(const std::string &);
 
-private:
-    void escchar(char c, char *out, bool qu);
-};
+// Escapes string to be used in the shell command line. If hardened == false,
+// it throws on ctrl characters. If hardened == true, it can handle any
+// mess in the string, but the result would be really ugly.
+std::string shellescape(const std::string &s, bool hardened = false);
 
-std::string shellescape(const std::string &s);
+// Unescapes string escaped by shellescape(s, false) function. Wont work with hardened true.
 std::string shellunescape(const std::string &s);
 
 std::string base26encode(uint32_t, int align = 1);

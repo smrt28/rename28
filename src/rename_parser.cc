@@ -81,6 +81,8 @@ bool RenameParser::read_file_or_dir(Context &ctx) {
     if (*pars != '#')
         filename = parser::read_escaped_string(pars);
 
+    // std::cerr << "filenam=[" <<  filename << "]" << std::endl;
+
     parser::ltrim(pars);
 
     switch(*pars) {

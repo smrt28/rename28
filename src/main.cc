@@ -207,8 +207,7 @@ int search_rename_repo(const Args &args) {
     s28::collector::hash(records, progress.set_prefix("hash"));
     s28::collector::group_duplicates(records, progress.set_prefix("duplicates"));
 
-    s28::Escaper es;
-
+    bool hardened = true;
     int dep = 0;
     for (auto &rec: records) {
         auto * node = rec->node;
@@ -216,13 +215,13 @@ int search_rename_repo(const Args &args) {
         if (node->is<s28::Dir>()) {
             const s28::Dir *dir = dynamic_cast<const s28::Dir *>(node);
             if (dir->get_children().empty()) {
-                std::cout << tabs(dep) << es.escape(node->get_name()) << " {}";
+                std::cout << tabs(dep) << s28::shellescape(node->get_name(), hardened) << " {}";
             } else {
-                std::cout << tabs(dep) << es.escape(node->get_name()) << " {";
+                std::cout << tabs(dep) << s28::shellescape(node->get_name(), hardened) << " {";
                 dep += 1;
             }
         } else {
-            std::cout << tabs(dep) << es.escape(node->get_name()) << " #" << rec->inode;
+            std::cout << tabs(dep) << s28::shellescape(node->get_name(), hardened) << " #" << rec->inode;
             auto d = rec->repre;
             if (d) {
                 while(d) {
@@ -272,16 +271,18 @@ int apply_rename(const Args &args) {
 
     if (!ok && !args.force) return 1;
 
+    std::cout << "#!/bin/bash" << std::endl;
+
     for (auto &rename: renames) {
         if (rename.src.empty()) {
-            std::cout << "mkdir -p " << s28::shellescape(args.prefix + rename.dst) << std::endl;
+            std::cout << "mkdir -p " << args.prefix + rename.dst << std::endl;
         } else {
             if ((rename.flags & s28::RenameParser::RenameRecord::DUPLICATE)
                     && !(rename.flags & s28::RenameParser::RenameRecord::KEEP)) {
                 std::cout << "# ";
             }
-            std::cout << "ln " << s28::shellescape(rename.src) << " "
-                  << s28::shellescape(args.prefix + rename.dst) << std::endl;
+            std::cout << "ln " << s28::shellescape(rename.src, true) << " "
+                  << args.prefix + rename.dst << std::endl;
         }
     }
 
