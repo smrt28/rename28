@@ -13,6 +13,7 @@ class BaseRecord : public boost::noncopyable {
         const Node *node = nullptr;
         ino_t inode = 0;
         int brackets = 0;
+        bool valid = true;
 };
 
 class Record : public BaseRecord  {

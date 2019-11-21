@@ -28,7 +28,6 @@ std::string hash_file(const std::string &path) {
     SHA256_Init(&sha256);
     int fd = open(path.c_str(), O_RDONLY);
     if (fd == -1) {
-        perror("err:");
         RAISE_ERROR("open for reading; file=" << path);
     }
     FileDescriptorGuard guard(fd);

@@ -113,7 +113,11 @@ void hash(Records &records, Progress &progress) {
         const Node *n = rec->node;
         const File *f = dynamic_cast<const File *>(n);
         if (!f) continue;
-        rec->hash = hash_file_short(f->get_path());
+        try {
+            rec->hash = hash_file_short(f->get_path());
+        } catch(...) {
+            rec->valid = false;
+        }
     }
 }
 
@@ -210,6 +214,7 @@ int search_rename_repo(const Args &args) {
     bool hardened = true;
     int dep = 0;
     for (auto &rec: records) {
+//        if (!rec->valid) continue;
         auto * node = rec->node;
 
         if (node->is<s28::Dir>()) {
