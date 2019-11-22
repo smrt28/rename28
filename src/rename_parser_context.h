@@ -1,14 +1,29 @@
 #ifndef RENAME_PARSER_CONTEXT_H
 #define RENAME_PARSER_CONTEXT_H
 #include <set>
+#include "hash.h"
 
 namespace s28 {
 
+typedef std::vector<std::string> DirChain;
+
+class DirChainSet {
+    public:
+        void insert(const DirChain &chain) {
+            hashes.insert(hash_dirchain(chain));
+        }
+
+        size_t count(const DirChain &chain) const {
+            return hashes.count(hash_dirchain(chain));
+        }
+
+    private:
+        std::set<hash128_t> hashes;
+};
+
 class GlobalRenameContext {
 public:
-    std::set<std::string> files;
-    std::set<std::string> dirs;
-
+    DirChainSet nodes;
 };
 
 class RenameParserContext {

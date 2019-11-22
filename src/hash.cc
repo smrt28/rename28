@@ -6,8 +6,11 @@
 #include <openssl/sha.h>
 #include <string>
 #include <errno.h>
+#include <vector>
 
+#include "string.h"
 #include "error.h"
+#include "hash.h"
 
 namespace s28 {
 namespace {
@@ -47,6 +50,20 @@ std::string hash_file(const std::string &path) {
 
 
     return std::string((char *)hash, sizeof(hash));
+}
+
+hash128_t hash_dirchain(const std::vector<std::string> &v) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    for (auto &name: v) {
+        SHA256_Update(&sha256, name.data(), name.size() + 1);
+    }
+    SHA256_Final(hash, &sha256);
+    hash128_t rv;
+    memcpy(&rv.first, hash, sizeof(rv.first));
+    memcpy(&rv.second, hash + sizeof(rv.first), sizeof(rv.second));
+    return rv;
 }
 
 

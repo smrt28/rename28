@@ -13,7 +13,7 @@ class FileNameParser {
     static const int TOKEN_WILDCARD = 2;
 public:
     FileNameParser(const std::string &rawpatern);
-    std::string parse(const std::string &fname, const RenameParserContext &ctx);
+    std::string parse(const std::string &fname, const RenameParserContext &ctx, int dups = 0);
 
     struct Wildcard {
         int type;

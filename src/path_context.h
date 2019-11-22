@@ -24,11 +24,11 @@ public:
         queue.push_front(std::unique_ptr<PathBuilder>(dirpath));
     }
 
-    bool build(const DirChain &dirchain, std::string &path, RenameParserContext &ctx) {
+    bool build(const DirChain &dirchain, DirChain &path, RenameParserContext &ctx, int dups) {
         DirChain src = dirchain; // TODO optimize
         DirChain dst;
         for (std::unique_ptr<PathBuilder> &p: queue) {
-            switch (p->build(src, dst, ctx)) {
+            switch (p->build(src, dst, ctx, dups)) {
                 case PathBuilder::SKIP:
                     return false;
                 case PathBuilder::UNCHANGED:
@@ -39,7 +39,7 @@ public:
             }
         }
 
-        path = boost::algorithm::join(src, "/");
+        std::swap(path, src);
         return true;
     }
 

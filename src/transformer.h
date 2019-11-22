@@ -10,7 +10,6 @@
 
 namespace s28 {
 
-typedef std::vector<std::string> DirChain;
 
 class PathBuilder {
 public:
@@ -25,7 +24,7 @@ public:
         return UNCHANGED;
     }
 
-    virtual Result build(const DirChain &dirchain, DirChain &path, const RenameParserContext &ctx) {
+    virtual Result build(const DirChain &dirchain, DirChain &path, const RenameParserContext &ctx, int dups) {
         return build(dirchain, path);
     }
 };
@@ -63,10 +62,28 @@ public:
         pattern_parser(pattern)
     {}
 
-    Result build(const DirChain &dirchain, DirChain &path, const RenameParserContext &ctx) override {
-        DirChain v(dirchain.begin(), dirchain.end() - 1);
-        v.push_back(pattern_parser.parse(dirchain.back(), ctx));
-        std::swap(v, path);
+    Result build(const DirChain &dirchain, DirChain &path, const RenameParserContext &ctx, int dups) override {
+        {
+            DirChain v(dirchain.begin(), dirchain.end() - 1);
+            v.push_back(pattern_parser.parse(dirchain.back(), ctx, 0));
+
+            if (!ctx.global_context.nodes.count(v)) {
+                std::swap(v, path);
+                return CHANGED;
+            }
+        }
+
+
+        for (int dups = 1; dups < 100; ++dups) {
+            DirChain v(dirchain.begin(), dirchain.end() - 1);
+            v.push_back(pattern_parser.parse(dirchain.back(), ctx, dups));
+            if (!ctx.global_context.nodes.count(v)) {
+                std::swap(v, path);
+                return CHANGED;
+            }
+        }
+
+        RAISE_ERROR("too many duplicates");
         return CHANGED;
     }
 

@@ -37,7 +37,8 @@ void check_wildcard_char(char c) {
         case '.': // '.', if it's not last character
         case '-': // '-', if it's not first character
         case '%':
-        case 'j':
+        case 'j': // per directory file counter
+        case 'D': // duplicate counter
             break;
         default:
             RAISE_ERROR("invalid file patern");
@@ -140,7 +141,7 @@ FileNameParser::FileNameParser(const std::string &rpat) : rawpatern(rpat) {
 
 
 // apply pattern on filename
-std::string FileNameParser::parse(const std::string &fname, const RenameParserContext &ctx) {
+std::string FileNameParser::parse(const std::string &fname, const RenameParserContext &ctx, int ndups) {
     parser::Parslet fullname(fname);
     parser::Parslet name = fullname;
 
@@ -201,6 +202,20 @@ std::string FileNameParser::parse(const std::string &fname, const RenameParserCo
                     }
                     builder.append(s);
                 }
+                break;
+            case 'D':
+                {
+                    if (ndups == 0) break;
+                    std::string s = std::to_string(ndups);
+                    size_t x = std::min(t.wld.arg, size_t(10));
+                    if (x > s.size()) {
+                        for (size_t i = 0; i < x - s.size(); i++ ) {
+                            builder.append("0");
+                        }
+                    }
+                    builder.append(s);
+                }
+                break;
             case '.':
                 builder.dots ++;
                 break;

@@ -139,6 +139,14 @@ TEST(Parsing, Parslet) {
     EXPECT_EQ(p.str(), text);
 }
 
+TEST(Utils, hashing) {
+    using namespace s28;
+    std::vector<std::string> v;
+    v.push_back("password");
+    hash128_t h = s28::hash_dirchain(v);
+    EXPECT_EQ(h.first, 3848593360877540576);
+    EXPECT_EQ(h.second, 6633993157779168732);
+}
 /*
 TEST(Parsing, TotalEscape) {
     using namespace s28;

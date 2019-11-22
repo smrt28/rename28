@@ -65,12 +65,12 @@ private:
     void rename_file(const std::string &src, uint32_t flags, RenameParserContext &ctx) {
         RenameRecord rec;
         rec.src = src;
-        std::string path;
-        if (file_context.build(dirchain, path, ctx)) {
-            global_context.files.insert(path);
-            rec.dst = path;
+        DirChain v;
+        if (file_context.build(dirchain, v, ctx, 0)) {
+            rec.dst = boost::algorithm::join(v, "/");
             rec.flags = flags;
             renames.push_back(rec);
+            global_context.nodes.insert(v);
         }
     }
 
@@ -78,12 +78,14 @@ private:
         if (dirchain.empty()) return;
         std::string path;
 
-        if (dir_context.build(dirchain, path, ctx)) {
-            if (global_context.dirs.count(path)) return;
-            global_context.dirs.insert(path);
+        DirChain v;
+        if (dir_context.build(dirchain, v, ctx, 0)) {
+            if (global_context.nodes.count(v)) return;
             RenameRecord rec;
+            std::string path = boost::algorithm::join(v, "/");
             rec.dst = path;
             renames.push_back(rec);
+            global_context.nodes.insert(v);
         }
     }
 
