@@ -37,6 +37,7 @@ void check_wildcard_char(char c) {
         case '.': // '.', if it's not last character
         case '-': // '-', if it's not first character
         case '%':
+        case 'j':
             break;
         default:
             RAISE_ERROR("invalid file patern");

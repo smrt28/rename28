@@ -43,6 +43,7 @@ private:
     PathContext file_context;
 
 
+    GlobalRenameContext global_context;
     const InodeMap &inomap;
     RenameRecords &renames;
 
@@ -60,13 +61,13 @@ private:
 
     std::vector<std::string> dirchain; // the current dirrectory chain (path)
     std::set<ino_t> duplicates; // set of created file inodes
-    std::set<std::string> dircreated; // already created directory paths
 
     void rename_file(const std::string &src, uint32_t flags, RenameParserContext &ctx) {
         RenameRecord rec;
         rec.src = src;
         std::string path;
         if (file_context.build(dirchain, path, ctx)) {
+            global_context.files.insert(path);
             rec.dst = path;
             rec.flags = flags;
             renames.push_back(rec);
@@ -78,8 +79,8 @@ private:
         std::string path;
 
         if (dir_context.build(dirchain, path, ctx)) {
-            if (dircreated.count(path)) return;
-            dircreated.insert(path);
+            if (global_context.dirs.count(path)) return;
+            global_context.dirs.insert(path);
             RenameRecord rec;
             rec.dst = path;
             renames.push_back(rec);

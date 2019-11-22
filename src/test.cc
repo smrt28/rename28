@@ -57,7 +57,8 @@ TEST(Parsing, Escape) {
 
 TEST(Parsing, FileNameParser) {
     using namespace s28;
-    RenameParserContext ctx;
+    GlobalRenameContext gc;
+    RenameParserContext ctx(gc);
 
     {
     s28::FileNameParser fnp("%n_%N.%e");

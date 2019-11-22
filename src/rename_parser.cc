@@ -113,7 +113,7 @@ void RenameParser::parse_dir_content() {
         parse_commands();
     }
 
-    RenameParserContext ctx;
+    RenameParserContext ctx(global_context);
     while(parse_file_or_dir(ctx)) {
         parser::ltrim(pars);
     }
