@@ -47,18 +47,14 @@ private:
     RenameRecords &renames;
 
     // recursive descent parsing
-    ino_t read_inodes(std::set<ino_t> *inodes);
+    ino_t parse_inodes(std::set<ino_t> *inodes);
 
-    struct Context {
-        size_t dirorder = 0;
-        size_t fileorder = 0;
-    };
 
-    bool read_file_or_dir(Context &ctx);
-    void read_commands();
-    void read_dir_content();
-    void read_dir();
-    void read_file();
+    bool parse_file_or_dir(RenameParserContext &ctx);
+    void parse_commands();
+    void parse_dir_content();
+    void parse_dir();
+    void parse_file(RenameParserContext &ctx);
     void update_context();
 
     parser::Parslet pars;
@@ -67,22 +63,22 @@ private:
     std::set<ino_t> duplicates; // set of created file inodes
     std::set<std::string> dircreated; // already created directory paths
 
-    void rename_file(const std::string &src, uint32_t flags) {
+    void rename_file(const std::string &src, uint32_t flags, RenameParserContext &ctx) {
         RenameRecord rec;
         rec.src = src;
         std::string path;
-        if (file_context.build(dirchain, path)) {
+        if (file_context.build(dirchain, path, ctx)) {
             rec.dst = path;
             rec.flags = flags;
             renames.push_back(rec);
         }
     }
 
-    void create_directory() {
+    void create_directory(RenameParserContext &ctx) {
         if (dirchain.empty()) return;
         std::string path;
 
-        if (dir_context.build(dirchain, path)) {
+        if (dir_context.build(dirchain, path, ctx)) {
             if (dircreated.count(path)) return;
             dircreated.insert(path);
             RenameRecord rec;

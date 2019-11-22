@@ -10,6 +10,10 @@ namespace s28 {
 
 typedef std::vector<std::string> DirChain;
 
+struct RenameParserContext {
+    size_t dirorder = 0;
+    size_t fileorder = 0;
+};
 
 class PathBuilder {
 public:
@@ -22,6 +26,10 @@ public:
     virtual ~PathBuilder() {}
     virtual Result build(const DirChain &dirchain, DirChain &path) {
         return UNCHANGED;
+    }
+
+    virtual Result build(const DirChain &dirchain, DirChain &path, const RenameParserContext &ctx) {
+        return build(dirchain, path);
     }
 };
 

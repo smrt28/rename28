@@ -19,7 +19,7 @@ RenameParser::RenameParser(InodeMap &inomap, std::vector<RenameRecord> &renames)
 
 
 
-ino_t RenameParser::read_inodes(std::set<ino_t> *inodes) {
+ino_t RenameParser::parse_inodes(std::set<ino_t> *inodes) {
     ino_t firstino = 0;
     for(;;) {
         while(isdigit(*pars)) {
@@ -74,7 +74,7 @@ void RenameParser::update_context()
    RAISE_ERROR("unknown command: " << cmd);
 }
 
-bool RenameParser::read_file_or_dir(Context &ctx) {
+bool RenameParser::parse_file_or_dir(RenameParserContext &ctx) {
     if (pars.empty() || *pars == '}') return false;
     if (*pars == '$') RAISE_ERROR("command must be at the directory beggining");
     std::string filename;
@@ -87,14 +87,14 @@ bool RenameParser::read_file_or_dir(Context &ctx) {
         case '{':
             dirchain.push_back(filename);
             ctx.dirorder++;
-            create_directory();
-            read_dir();
+            create_directory(ctx);
+            parse_dir();
             dirchain.pop_back();
             return true;
         case '#':
             dirchain.push_back(filename);
             ctx.fileorder++;
-            read_file();
+            parse_file(ctx);
             dirchain.pop_back();
             return true;
 
@@ -102,7 +102,7 @@ bool RenameParser::read_file_or_dir(Context &ctx) {
     RAISE_ERROR("expected file or dir");
 }
 
-void RenameParser::read_dir_content() {
+void RenameParser::parse_dir_content() {
     parser::ltrim(pars);
 
     size_t dsize = dir_context.size();
@@ -113,8 +113,8 @@ void RenameParser::read_dir_content() {
         update_context();
     }
 
-    Context ctx;
-    while(read_file_or_dir(ctx)) {
+    RenameParserContext ctx;
+    while(parse_file_or_dir(ctx)) {
         parser::ltrim(pars);
     }
 
@@ -124,18 +124,18 @@ void RenameParser::read_dir_content() {
 
 
 
-void RenameParser::read_dir() {
+void RenameParser::parse_dir() {
     pars.expect_char('{');
-    read_dir_content();
+    parse_dir_content();
     pars.expect_char('}');
 }
 
 
-void RenameParser::read_file() {
+void RenameParser::parse_file(RenameParserContext &ctx) {
     pars.expect_char('#');
     std::set<ino_t> inodes;
 
-    read_inodes(&inodes);
+    parse_inodes(&inodes);
 
     bool found = false;
     for (ino_t ino : inodes) {
@@ -148,7 +148,7 @@ void RenameParser::read_file() {
             } else {
                 duplicates.insert(ino);
             }
-            rename_file(it->second->node->get_path(), flags);
+            rename_file(it->second->node->get_path(), flags, ctx);
             found = true;
             break;
         } else {
@@ -174,7 +174,7 @@ void RenameParser::parse(const std::string &inputfile) {
             std::istreambuf_iterator<char>());
 
     pars = parser::Parslet(str);
-    read_dir_content();
+    parse_dir_content();
 }
 
 } // namespace s28

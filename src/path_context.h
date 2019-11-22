@@ -24,11 +24,11 @@ public:
         queue.push_front(std::unique_ptr<PathBuilder>(dirpath));
     }
 
-    bool build(const DirChain &dirchain, std::string &path) {
+    bool build(const DirChain &dirchain, std::string &path, RenameParserContext &ctx) {
         DirChain src = dirchain; // TODO optimize
         DirChain dst;
         for (std::unique_ptr<PathBuilder> &p: queue) {
-            switch (p->build(src, dst)) {
+            switch (p->build(src, dst, ctx)) {
                 case PathBuilder::SKIP:
                     return false;
                 case PathBuilder::UNCHANGED:
