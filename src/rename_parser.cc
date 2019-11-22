@@ -35,7 +35,7 @@ ino_t RenameParser::parse_inodes(std::set<ino_t> *inodes) {
     return firstino;
 }
 
-void RenameParser::update_context()
+void RenameParser::parse_commands()
 {
    pars.expect_char('$');
    const char *it = pars.begin();
@@ -110,7 +110,7 @@ void RenameParser::parse_dir_content() {
 
     // read commands to the commands stack
     while (!pars.empty() && *pars == '$') {
-        update_context();
+        parse_commands();
     }
 
     RenameParserContext ctx;

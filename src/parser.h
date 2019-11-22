@@ -268,6 +268,10 @@ inline std::string read_escaped_string(parser::Parslet &p) {
     }
     bool esc = false;
     for (;;) {
+        if (p.empty()) {
+            if (esc || quoted) p.raise(s28::parser::Error::RANGE);;
+            break;
+        }
         uint32_t c = p.next();
         if (esc) {
             esc = false;
@@ -290,39 +294,6 @@ inline std::string read_escaped_string(parser::Parslet &p) {
         v.push_back(c);
     }
     return std::string(v.begin(), v.end());
-
-    /*
-    parser::Parslet orig = p;
-    uint32_t c = utf8::next(p);
-    bool quoted = false;
-    if (c == '"') {
-        quoted = true;
-    } else {
-        p = orig;
-    }
-
-    std::vector<uint32_t> v;
-    for (;;) {
-        if (p.empty() && !quoted) {
-            break;
-        }
-        c = utf8::next(p);
-        if (c == '\\') {
-            c = utf8::next(p);
-        } else {
-            if (quoted) {
-                if (c == '"') break;
-            } else {
-                if (c == ' ') break;
-            }
-        }
-        v.push_back(c);
-    }
-
-    std::string rv;
-    utf8::utf16to8(v.begin(), v.end(), std::back_inserter(rv));
-    return rv;
-    */
 }
 
 inline std::string word(parser::Parslet &p) {

@@ -5,6 +5,8 @@
 #include "filename_parser.h"
 #include "parser.h"
 #include "error.h"
+#include "rename_parser_context.h"
+
 namespace s28 {
 namespace {
 
@@ -137,7 +139,7 @@ FileNameParser::FileNameParser(const std::string &rpat) : rawpatern(rpat) {
 
 
 // apply pattern on filename
-std::string FileNameParser::parse(const std::string &fname) {
+std::string FileNameParser::parse(const std::string &fname, const RenameParserContext &ctx) {
     parser::Parslet fullname(fname);
     parser::Parslet name = fullname;
 
@@ -187,6 +189,17 @@ std::string FileNameParser::parse(const std::string &fname) {
                     builder.append(s);
                 }
                 break;
+            case 'j':
+                {
+                    std::string s = std::to_string(ctx.fileorder);
+                    size_t x = std::min(t.wld.arg, size_t(10));
+                    if (x > s.size()) {
+                        for (size_t i = 0; i < x - s.size(); i++ ) {
+                            builder.append("0");
+                        }
+                    }
+                    builder.append(s);
+                }
             case '.':
                 builder.dots ++;
                 break;

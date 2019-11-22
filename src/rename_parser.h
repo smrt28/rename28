@@ -51,11 +51,10 @@ private:
 
 
     bool parse_file_or_dir(RenameParserContext &ctx);
-    void parse_commands();
     void parse_dir_content();
     void parse_dir();
     void parse_file(RenameParserContext &ctx);
-    void update_context();
+    void parse_commands();
 
     parser::Parslet pars;
 

@@ -169,11 +169,12 @@ std::string shellescape(const std::string &s, bool hardened) {
     }
     return shell_soft_escape(s);
 }
-
+/*
 std::string shellunescape(const std::string &s) {
     parser::Parslet p(s);
     return read_escaped_string(p);
 }
+*/
 
 
 std::string base26encode(uint32_t n, int align) {

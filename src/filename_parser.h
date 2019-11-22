@@ -6,12 +6,14 @@
 
 namespace s28 {
 
+class RenameParserContext;
+
 class FileNameParser {
     static const int TOKEN_STRING = 1;
     static const int TOKEN_WILDCARD = 2;
 public:
     FileNameParser(const std::string &rawpatern);
-    std::string parse(const std::string &fname);
+    std::string parse(const std::string &fname, const RenameParserContext &ctx);
 
     struct Wildcard {
         int type;

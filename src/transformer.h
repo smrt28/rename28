@@ -6,14 +6,11 @@
 #include <boost/algorithm/string/join.hpp>
 #include "error.h"
 #include "filename_parser.h"
+#include "rename_parser_context.h"
+
 namespace s28 {
 
 typedef std::vector<std::string> DirChain;
-
-struct RenameParserContext {
-    size_t dirorder = 0;
-    size_t fileorder = 0;
-};
 
 class PathBuilder {
 public:
@@ -66,9 +63,9 @@ public:
         pattern_parser(pattern)
     {}
 
-    Result build(const DirChain &dirchain, DirChain &path) override {
+    Result build(const DirChain &dirchain, DirChain &path, const RenameParserContext &ctx) override {
         DirChain v(dirchain.begin(), dirchain.end() - 1);
-        v.push_back(pattern_parser.parse(dirchain.back()));
+        v.push_back(pattern_parser.parse(dirchain.back(), ctx));
         std::swap(v, path);
         return CHANGED;
     }
