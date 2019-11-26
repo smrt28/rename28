@@ -1,6 +1,7 @@
 #ifndef RENAME_PARSER_CONTEXT_H
 #define RENAME_PARSER_CONTEXT_H
 #include <set>
+#include <map>
 #include "hash.h"
 
 namespace s28 {
@@ -9,16 +10,20 @@ typedef std::vector<std::string> DirChain;
 
 class DirChainSet {
     public:
-        void insert(const DirChain &chain) {
-            hashes.insert(hash_dirchain(chain));
+        typedef hash128_t Stamp;
+
+        size_t insert(const DirChain &chain) {
+            return hashes[hash_dirchain(chain)]++;
         }
 
         size_t count(const DirChain &chain) const {
-            return hashes.count(hash_dirchain(chain));
+            auto it = hashes.find(hash_dirchain(chain));
+            if (it == hashes.end()) return 0;
+            return it->second;
         }
 
     private:
-        std::set<hash128_t> hashes;
+        std::map<Stamp, size_t> hashes;
 };
 
 class GlobalRenameContext {

@@ -2,7 +2,7 @@
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 #include <sstream>
-#include "filename_parser.h"
+#include "pattern.h"
 #include "parser.h"
 #include "error.h"
 #include "rename_parser_context.h"
@@ -61,9 +61,17 @@ class StringBuilder {
             if (s.empty()) return;
             if (dots) {
                 dots = 0;
-                oss << ".";
+                if (!lastdot) {
+                    oss << ".";
+                    lastdot = true;
+                }
             }
             empty = false;
+            if (s.back() == '.') {
+                lastdot = true;
+            } else {
+                lastdot = false;
+            }
             oss << s;
         }
 
@@ -73,6 +81,7 @@ class StringBuilder {
 
         int dots = 0;
         bool empty = true;
+        bool lastdot = false;
     private:
         std::ostringstream oss;
 };
@@ -80,7 +89,7 @@ class StringBuilder {
 } // namespace
 
 // simple patern tokenizer
-FileNameParser::FileNameParser(const std::string &rpat) : rawpatern(rpat) {
+PatternParser::PatternParser(const std::string &rpat) : rawpatern(rpat) {
     parser::Parslet m(rawpatern);
     const char *it = m.begin();
     while(!m.empty()) {
@@ -141,7 +150,9 @@ FileNameParser::FileNameParser(const std::string &rpat) : rawpatern(rpat) {
 
 
 // apply pattern on filename
-std::string FileNameParser::parse(const std::string &fname, const RenameParserContext &ctx, int ndups) {
+std::string PatternParser::parse(const std::string &fname, const RenameParserContext &ctx,
+        int ndups) 
+{
     parser::Parslet fullname(fname);
     parser::Parslet name = fullname;
 
@@ -213,7 +224,7 @@ std::string FileNameParser::parse(const std::string &fname, const RenameParserCo
                             builder.append("0");
                         }
                     }
-                    builder.append(s);
+                    builder.append(std::string("Dup") + s);
                 }
                 break;
             case '.':

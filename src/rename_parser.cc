@@ -67,7 +67,7 @@ void RenameParser::parse_commands()
    }
 
    if (cmd == "ascii") {
-       file_context.push(new Ascii());
+       file_context.push(new CharFilter());
        return;
    }
 

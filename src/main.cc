@@ -331,7 +331,6 @@ bool parse_args(Args &args, int argc, char **argv) {
     return true;
 }
 
-#include "filename_parser.h"
 
 int main(int argc, char **argv) {
     Args args;

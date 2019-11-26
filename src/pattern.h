@@ -1,5 +1,5 @@
-#ifndef FILENAMEPARSER_H
-#define FILENAMEPARSER_H
+#ifndef PATTERNPARSER_H
+#define PATTERNPARSER_H
 
 #include <string>
 #include <vector>
@@ -8,11 +8,11 @@ namespace s28 {
 
 class RenameParserContext;
 
-class FileNameParser {
+class PatternParser {
     static const int TOKEN_STRING = 1;
     static const int TOKEN_WILDCARD = 2;
 public:
-    FileNameParser(const std::string &rawpatern);
+    PatternParser(const std::string &rawpatern);
     std::string parse(const std::string &fname, const RenameParserContext &ctx, int dups = 0);
 
     struct Wildcard {
@@ -42,4 +42,4 @@ public:
 
 } // namespace s28
 
-#endif /* FILENAMEPARSER_H */
+#endif /* PATTERNPARSER_H */

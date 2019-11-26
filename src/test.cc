@@ -2,7 +2,7 @@
 
 #include "gtest/gtest.h"
 #include "escape.h"
-#include "filename_parser.h"
+#include "pattern.h"
 #include "parser.h"
 #include "utf8.h"
 #include "transformer.h"
@@ -55,13 +55,13 @@ TEST(Parsing, Escape) {
 }
 
 
-TEST(Parsing, FileNameParser) {
+TEST(Parsing, PatternParser) {
     using namespace s28;
     GlobalRenameContext gc;
     RenameParserContext ctx(gc);
 
     {
-    s28::FileNameParser fnp("%n_%N.%e");
+    s28::PatternParser fnp("%n_%N.%e");
     std::string s = "abc.xyz";
     EXPECT_EQ(fnp.parse(s, ctx), "abc_1.xyz");
     EXPECT_EQ(fnp.parse(s, ctx), "abc_2.xyz");
@@ -70,7 +70,7 @@ TEST(Parsing, FileNameParser) {
     }
 
     {
-    s28::FileNameParser fnp("%n_%3N.%e");
+    s28::PatternParser fnp("%n_%3N.%e");
     std::string s = "abc.xyz";
     EXPECT_EQ(fnp.parse(s, ctx), "abc_001.xyz");
     EXPECT_EQ(fnp.parse(s, ctx), "abc_002.xyz");
@@ -79,28 +79,28 @@ TEST(Parsing, FileNameParser) {
     }
 
     {
-    s28::FileNameParser fnp("%un_%3N.%e");
+    s28::PatternParser fnp("%un_%3N.%e");
     std::string s = "abc.xyz";
     EXPECT_EQ(fnp.parse(s, ctx), "ABC_001.xyz");
     EXPECT_EQ(fnp.parse(s, ctx), "ABC_002.xyz");
     }
 
     {
-    s28::FileNameParser fnp("%ln_%3N.%le");
+    s28::PatternParser fnp("%ln_%3N.%le");
     std::string s = "aBc.xYZ";
     EXPECT_EQ(fnp.parse(s, ctx), "abc_001.xyz");
     EXPECT_EQ(fnp.parse(s, ctx), "abc_002.xyz");
     }
 
     {
-    s28::FileNameParser fnp("%n%-%N.%e");
+    s28::PatternParser fnp("%n%-%N.%e");
     std::string s = "abcxyz";
     EXPECT_EQ(fnp.parse(s, ctx), "abcxyz-1.");
     EXPECT_EQ(fnp.parse(s, ctx), "abcxyz-2.");
     }
 
     {
-    s28::FileNameParser fnp("%-%n_%N%.%e");
+    s28::PatternParser fnp("%-%n_%N%.%e");
     std::string s = "abcxyz";
     EXPECT_EQ(fnp.parse(s, ctx), "abcxyz_1");
     EXPECT_EQ(fnp.parse(s, ctx), "abcxyz_2");

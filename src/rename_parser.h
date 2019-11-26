@@ -16,6 +16,7 @@
 #include "parser.h"
 #include "record.h"
 #include "path_context.h"
+#include "error.h"
 
 namespace s28 {
 
@@ -66,12 +67,20 @@ private:
         RenameRecord rec;
         rec.src = src;
         DirChain v;
-        if (file_context.build(dirchain, v, ctx, 0)) {
-            rec.dst = boost::algorithm::join(v, "/");
-            rec.flags = flags;
-            renames.push_back(rec);
-            global_context.nodes.insert(v);
+        int dups = 0;
+        static const int LIMIT = 1000;
+        for (int i = 0; i < LIMIT; i++) {
+            if (file_context.build(dirchain, v, ctx, dups)) {
+                dups = global_context.nodes.insert(v);
+                if (global_context.nodes.count(v) > 1)
+                    continue;
+                rec.dst = boost::algorithm::join(v, "/");
+                rec.flags = flags;
+                renames.push_back(rec);
+            }
+            return;
         }
+        RAISE_ERROR("too many duplocates");
     }
 
     void create_directory(RenameParserContext &ctx) {

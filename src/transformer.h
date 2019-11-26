@@ -5,7 +5,7 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include "error.h"
-#include "filename_parser.h"
+#include "pattern.h"
 #include "rename_parser_context.h"
 
 namespace s28 {
@@ -65,7 +65,7 @@ public:
     Result build(const DirChain &dirchain, DirChain &path, const RenameParserContext &ctx, int dups) override {
         {
             DirChain v(dirchain.begin(), dirchain.end() - 1);
-            v.push_back(pattern_parser.parse(dirchain.back(), ctx, 0));
+            v.push_back(pattern_parser.parse(dirchain.back(), ctx, dups));
 
             if (!ctx.global_context.nodes.count(v)) {
                 std::swap(v, path);
@@ -87,10 +87,10 @@ public:
         return CHANGED;
     }
 
-   FileNameParser pattern_parser;
+   PatternParser pattern_parser;
 };
 
-class Ascii : public PathBuilder {
+class CharFilter : public PathBuilder {
 public:
     Result build(const DirChain &dirchain, DirChain &path) override {
         DirChain v(dirchain.begin(), dirchain.end() - 1);
