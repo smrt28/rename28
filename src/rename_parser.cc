@@ -15,7 +15,10 @@ namespace s28 {
 RenameParser::RenameParser(InodeMap &inomap, std::vector<RenameRecord> &renames) :
     inomap(inomap),
     renames(renames)
-{}
+{
+       file_context.push(1, new ApplyPattern("%F%.%D"));
+       return;
+}
 
 
 
@@ -55,19 +58,24 @@ void RenameParser::parse_commands()
    std::string cmd = parser::word(command);
 
    if (cmd == "flatten") {
-       dir_context.push(new DirFlattener(dirchain.size()));
-       file_context.push(new FileFlattener(dirchain.size()));
+       dir_context.push(0, new DirFlattener(dirchain.size()));
+       file_context.push(0, new FileFlattener(dirchain.size()));
        return;
    }
 
    if (cmd == "pattern") {
        std::string pattern = parser::trim(command).str();
-       file_context.push(new ApplyPattern(pattern));
+       file_context.push(1, new ApplyPattern(pattern));
        return;
    }
 
    if (cmd == "ascii") {
-       file_context.push(new CharFilter());
+       file_context.push(2, new CharFilter());
+       return;
+   }
+
+   if (cmd == "keepdups") {
+       keepdups = true;
        return;
    }
 
@@ -76,7 +84,9 @@ void RenameParser::parse_commands()
 
 bool RenameParser::parse_file_or_dir(RenameParserContext &ctx) {
     if (pars.empty() || *pars == '}') return false;
-    if (*pars == '$') RAISE_ERROR("command must be at the directory beggining");
+    if (*pars == '$') {
+        RAISE_ERROR("command must be at the directory beggining");
+    }
     std::string filename;
     if (*pars != '#')
         filename = parser::read_escaped_string(pars);
@@ -105,8 +115,9 @@ bool RenameParser::parse_file_or_dir(RenameParserContext &ctx) {
 void RenameParser::parse_dir_content() {
     parser::ltrim(pars);
 
-    size_t dsize = dir_context.size();
-    size_t fsize = file_context.size();
+    auto dsize = dir_context.state();
+    auto fsize = file_context.state();
+    bool keepdups_bak = keepdups;
 
     // read commands to the commands stack
     while (!pars.empty() && *pars == '$') {
@@ -118,8 +129,9 @@ void RenameParser::parse_dir_content() {
         parser::ltrim(pars);
     }
 
-    dir_context.pop_to(dsize);
-    file_context.pop_to(fsize);
+    dir_context.restore(dsize);
+    file_context.restore(fsize);
+    keepdups = keepdups_bak;
 }
 
 
@@ -140,20 +152,20 @@ void RenameParser::parse_file(RenameParserContext &ctx) {
     bool found = false;
     for (ino_t ino : inodes) {
         auto it = inomap.find(ino);
-        if (it != inomap.end()) {
-            uint32_t flags = 0;
-            if (duplicates.count(ino)) {
-                flags = RenameParser::RenameRecord::DUPLICATE;
-                if (keepdups) flags |= RenameParser::RenameRecord::KEEP;
-            } else {
-                duplicates.insert(ino);
-            }
-            rename_file(it->second->node->get_path(), flags, ctx);
-            found = true;
-            break;
-        } else {
-            // inode not found
+        if (it == inomap.end()) {
+            RAISE_ERROR("inode #" << ino << " not found");
         }
+
+        uint32_t flags = 0;
+        if (duplicates.count(ino)) {
+            flags = RenameParser::RenameRecord::DUPLICATE;
+            if (keepdups) flags |= RenameParser::RenameRecord::KEEP;
+        } else {
+            duplicates.insert(ino);
+        }
+        rename_file(it->second->node->get_path(), flags, ctx);
+        found = true;
+        break;
     }
     if (!found) {
         // cant copy the file which is not in repo

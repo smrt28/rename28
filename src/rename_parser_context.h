@@ -36,9 +36,15 @@ public:
     RenameParserContext(GlobalRenameContext &global_context) :
         global_context(global_context)
     {}
-    const GlobalRenameContext &global_context;
+    GlobalRenameContext &global_context;
     size_t dirorder = 0;
     size_t fileorder = 0;
+    size_t insert_node(const DirChain &chain) {
+        return global_context.nodes.insert(chain);
+    }
+    size_t nodes_count(const DirChain &chain) const {
+        return global_context.nodes.count(chain);
+    }
 };
 
 }

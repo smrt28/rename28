@@ -287,7 +287,7 @@ int apply_rename(const Args &args) {
                 std::cout << "# ";
             }
             std::cout << "ln " << s28::shellescape(rename.src, true) << " "
-                  << args.prefix + rename.dst << std::endl;
+                  << s28::shellescape(args.prefix + rename.dst) << std::endl;
         }
     }
 

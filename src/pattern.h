@@ -12,7 +12,10 @@ class PatternParser {
     static const int TOKEN_STRING = 1;
     static const int TOKEN_WILDCARD = 2;
 public:
-    PatternParser(const std::string &rawpatern);
+    PatternParser() {}
+    PatternParser(const std::string &pattern) { build(pattern); }
+
+    void build(const std::string &rawpatern);
     std::string parse(const std::string &fname, const RenameParserContext &ctx, int dups = 0);
 
     struct Wildcard {

@@ -59,8 +59,10 @@ public:
 class ApplyPattern : public PathBuilder {
 public:
     ApplyPattern(const std::string &pattern) :
-        pattern_parser(pattern)
-    {}
+        pattern_parser()
+    {
+        pattern_parser.build(pattern);
+    }
 
     Result build(const DirChain &dirchain, DirChain &path, const RenameParserContext &ctx, int dups) override {
         {

@@ -72,15 +72,17 @@ private:
         for (int i = 0; i < LIMIT; i++) {
             if (file_context.build(dirchain, v, ctx, dups)) {
                 dups = global_context.nodes.insert(v);
-                if (global_context.nodes.count(v) > 1)
+                if (global_context.nodes.count(v) > 1) {
+    //                std::cerr << "dup: " << boost::algorithm::join(v, "/") << std::endl;
                     continue;
+                }
                 rec.dst = boost::algorithm::join(v, "/");
                 rec.flags = flags;
                 renames.push_back(rec);
             }
             return;
         }
-        RAISE_ERROR("too many duplocates");
+        RAISE_ERROR("too many duplocates1");
     }
 
     void create_directory(RenameParserContext &ctx) {

@@ -32,7 +32,8 @@ int dec2int(char c) {
 void check_wildcard_char(char c) {
     switch (c) {
         case 'e': // extension
-        case 'n': // file name
+        case 'n': // file name with ni ext.
+        case 'F': // full file name
         case 'N': // number
         case '.': // '.', if it's not last character
         case '-': // '-', if it's not first character
@@ -89,7 +90,8 @@ class StringBuilder {
 } // namespace
 
 // simple patern tokenizer
-PatternParser::PatternParser(const std::string &rpat) : rawpatern(rpat) {
+void PatternParser::build(const std::string &rpat) {
+    rawpatern = rpat;
     parser::Parslet m(rawpatern);
     const char *it = m.begin();
     while(!m.empty()) {
@@ -121,6 +123,7 @@ PatternParser::PatternParser(const std::string &rpat) : rawpatern(rpat) {
                     m.skip();
                 }
             }
+
 
 
             // check allowed wildcard (after %) character
@@ -190,6 +193,11 @@ std::string PatternParser::parse(const std::string &fname, const RenameParserCon
             case 'n':
                 builder.append(set_case(name.str(), t.wld.arg));
                 break;
+
+            case 'F':
+                builder.append(fname);
+                break;
+
             case 'N':
                 {
                     std::string s = std::to_string(++cnt);
