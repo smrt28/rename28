@@ -6,6 +6,7 @@
 #include "parser.h"
 #include "utf8.h"
 #include "transformer.h"
+#include "restorable_queue.h"
 
 /*
 void check(const std::string &s) {
@@ -147,6 +148,34 @@ TEST(Utils, hashing) {
     EXPECT_EQ(h.first, 3848593360877540576);
     EXPECT_EQ(h.second, 6633993157779168732);
 }
+
+
+TEST(Structs, RestorableQueues) {
+    using namespace s28;
+    RestorableQueues<std::string> rq;
+
+    rq.push(0, new std::string("a1"));
+    rq.push(0, new std::string("a2"));
+    rq.push(3, new std::string("c1"));
+
+    RestorableQueues<std::string>::State st = rq.state();
+
+    rq.push(0, new std::string("xa1"));
+    rq.push(0, new std::string("xa2"));
+    rq.push(1, new std::string("c1x"));
+
+    EXPECT_EQ(*rq[0], "xa2");
+    EXPECT_EQ(*rq[1], "c1x");
+    EXPECT_EQ(rq[2], nullptr);
+    EXPECT_EQ(rq[10], nullptr);
+
+    rq.restore(st);
+    EXPECT_EQ(*rq[0], "a2");
+    EXPECT_EQ(*rq[3], "c1");
+    EXPECT_EQ(rq[2], nullptr);
+    EXPECT_EQ(rq[10], nullptr);
+}
+
 /*
 TEST(Parsing, TotalEscape) {
     using namespace s28;
