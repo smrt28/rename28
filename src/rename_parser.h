@@ -39,10 +39,9 @@ public:
 
 
 private:
-
+    // Path modificators
     PathContext dir_context;
     PathContext file_context;
-
 
     GlobalRenameContext global_context;
     const InodeMap &inomap;
@@ -51,13 +50,21 @@ private:
     // recursive descent parsing
     ino_t parse_inodes(std::set<ino_t> *inodes);
 
-
+    // recursive descent parser functions
     bool parse_file_or_dir(RenameParserContext &ctx);
     void parse_dir_content();
     void parse_dir();
     void parse_file(RenameParserContext &ctx);
-    void parse_commands();
 
+    struct CommandsContext {
+        std::string duppattern;
+        ApplyPattern *pattern = nullptr;
+    };
+
+    void parse_commands(CommandsContext &ctx);
+    //
+
+    // parsing context
     parser::Parslet pars;
 
     std::vector<std::string> dirchain; // the current dirrectory chain (path)
@@ -73,7 +80,7 @@ private:
             if (file_context.build(dirchain, v, ctx, dups)) {
                 dups = global_context.nodes.insert(v);
                 if (global_context.nodes.count(v) > 1) {
-    //                std::cerr << "dup: " << boost::algorithm::join(v, "/") << std::endl;
+                    std::cerr << "dup: " << boost::algorithm::join(v, "/") << std::endl;
                     continue;
                 }
                 rec.dst = boost::algorithm::join(v, "/");

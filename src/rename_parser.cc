@@ -38,7 +38,7 @@ ino_t RenameParser::parse_inodes(std::set<ino_t> *inodes) {
     return firstino;
 }
 
-void RenameParser::parse_commands()
+void RenameParser::parse_commands(CommandsContext &ctx)
 {
    pars.expect_char('$');
    const char *it = pars.begin();
@@ -63,9 +63,26 @@ void RenameParser::parse_commands()
        return;
    }
 
+   if (cmd == "duppattern") {
+       std::string duppattern = parser::trim(command).str();
+       if (ctx.pattern) {
+           ctx.pattern->duppattern = duppattern;
+       } else {
+           ctx.duppattern = duppattern;
+       }
+
+       return;
+   }
+
    if (cmd == "pattern") {
        std::string pattern = parser::trim(command).str();
-       file_context.push(1, new ApplyPattern(pattern));
+       std::unique_ptr<ApplyPattern> p(new ApplyPattern(pattern));
+       if (!ctx.duppattern.empty()) {
+           p->duppattern = ctx.duppattern;
+           ctx.pattern = p.get();
+       }
+
+       file_context.push(1, p.release());
        return;
    }
 
@@ -84,9 +101,19 @@ void RenameParser::parse_commands()
 
 bool RenameParser::parse_file_or_dir(RenameParserContext &ctx) {
     if (pars.empty() || *pars == '}') return false;
+
+    /*
+    if (*pars == '/' && pars[1] != '/') {
+        while (!pars.empty() && *pars != '\n') {}
+        return true;
+    }
+    */
+
     if (*pars == '$') {
         RAISE_ERROR("command must be at the directory beggining");
     }
+
+
     std::string filename;
     if (*pars != '#')
         filename = parser::read_escaped_string(pars);
@@ -107,13 +134,13 @@ bool RenameParser::parse_file_or_dir(RenameParserContext &ctx) {
             parse_file(ctx);
             dirchain.pop_back();
             return true;
-
     }
     RAISE_ERROR("expected file or dir");
 }
 
 void RenameParser::parse_dir_content() {
     parser::ltrim(pars);
+    CommandsContext cctx;
 
     auto dsize = dir_context.state();
     auto fsize = file_context.state();
@@ -121,7 +148,7 @@ void RenameParser::parse_dir_content() {
 
     // read commands to the commands stack
     while (!pars.empty() && *pars == '$') {
-        parse_commands();
+        parse_commands(cctx);
     }
 
     RenameParserContext ctx(global_context);

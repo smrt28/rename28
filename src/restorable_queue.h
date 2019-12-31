@@ -7,7 +7,7 @@ namespace s28 {
 
 template<typename T>
 class RestorableQueues {
-    bool dirty = false;
+//    bool dirty = false;
     typedef std::vector<std::unique_ptr<T>> Queue;
     std::vector<Queue> queues;
 
@@ -17,7 +17,7 @@ public:
 
     // push an item to the queue specified by id
     void push(size_t id, T *item) {
-        dirty = true;
+//        dirty = true;
         queues.resize(std::max(id + 1, queues.size()));
         queues[id].push_back(std::unique_ptr<T>(item));
     }

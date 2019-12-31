@@ -89,7 +89,8 @@ public:
         return CHANGED;
     }
 
-   PatternParser pattern_parser;
+    std::string duppattern;
+    PatternParser pattern_parser;
 };
 
 class CharFilter : public PathBuilder {
